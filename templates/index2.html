@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Tumor Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .image-container {
+            display: flex;
+            gap: 20px;
+        }
+        .image-box {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        .image-box img {
+            max-width: 100%;
+            height: auto;
+        }
+        .results {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .coordinates {
+            background-color: #e9f7ef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Brain Tumor Detection System</h1>
+
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Analyze Image</button>
+        </form>
+
+        {% if result %}
+        <div class="results">
+            <h2>Results</h2>
+            <p><strong>{{ result }}</strong></p>
+            <p>Confidence: {{ confidence }}</p>
+            <p>{{ bbox_coordinates }}</p>
+
+            <div class="image-container">
+                <div class="image-box">
+                    <h3>Original Image</h3>
+                    <img src="{{ file_path }}" alt="Original MRI Scan">
+                </div>
+                {% if has_tumor %}
+                <div class="image-box">
+                    <h3>Detection Result</h3>
+                    <img src="{{ localized_file_path }}" alt="Tumor Detection">
+                </div>
+                {% endif %}
+            </div>
+
+            {% if coordinates_3d %}
+            <div class="coordinates">
+                <h3>3D Tumor Coordinates (Normalized)</h3>
+                <p>These coordinates can be used to create a 3D model of the tumor:</p>
+                <pre>{{ coordinates_3d }}</pre>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,65 @@
+# prompt: write a proper beautiful html code for above written code
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Brain Tumor Prediction</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 500px;
+            text-align: center;
+            margin-top: 50px; /* Added margin for better spacing */
+        }
+        
+        h1 {
+            color: #333;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        img {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Brain Tumor Prediction</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*">
+            <input type="submit" value="Predict">
+        </form>
+
+        {% if result %}
+            <div id="result">
+                Prediction: {{ result }} ({{ confidence }}) <br>
+                <img src="{{ file_path }}" alt="Uploaded Image">
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
