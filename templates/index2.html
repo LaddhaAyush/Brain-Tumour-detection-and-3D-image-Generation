@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Tumor Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #05c2c9;
+            --secondary: #0f4c81;
+            --accent: #36b5cd;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --error: #e74c3c;
+            --dark: #0d1b2a;
+            --dark-secondary: #1b263b;
+            --light: #f8f9fa;
+            --text-light: #ffffff;
+            --text-dark: #1b263b;
+            --panel-border: rgba(5, 194, 201, 0.15);
+            --transition-speed: 0.3s;
+            --border-radius: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: var(--dark);
+            color: var(--text-light);
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        
+        h2, h3 {
+            color: var(--primary);
+            font-weight: 500;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .image-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .image-box {
+            flex: 1;
+            border: 1px solid var(--panel-border);
+            padding: 20px;
+            background-color: var(--dark-secondary);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            min-width: 250px;
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .image-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+        
+        .image-box img {
+            max-width: 100%;
+            height: auto;
+            border-radius: calc(var(--border-radius) - 2px);
+        }
+        
+        .results {
+            background-color: var(--dark-secondary);
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--panel-border);
+        }
+        
+        .coordinates {
+            background-color: rgba(15, 76, 129, 0.3);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Consolas', monospace;
+            border-left: 4px solid var(--primary);
+        }
+        
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: var(--dark-secondary);
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--panel-border);
+        }
+        
+        input[type="file"] {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--panel-border);
+            color: var(--text-light);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            transition: all var(--transition-speed) ease;
+        }
+        
+        button:hover {
+            background-color: #04a9b0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(5, 194, 201, 0.4);
+        }
+        
+        strong {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        
+        p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        
+        .confidence {
+            color: var(--success);
+            font-weight: 500;
+        }
+        
+        pre {
+            background-color: rgba(13, 27, 42, 0.5);
+            padding: 15px;
+            border-radius: calc(var(--border-radius) - 2px);
+            overflow-x: auto;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Brain Tumor Detection System</h1>
+
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Analyze Image</button>
+        </form>
+
+        {% if result %}
+        <div class="results">
+            <h2>Results</h2>
+            <p><strong>{{ result }}</strong></p>
+            <p class="confidence">Confidence: {{ confidence }}</p>
+            <p>{{ bbox_coordinates }}</p>
+
+            <div class="image-container">
+                <div class="image-box">
+                    <h3>Original Image</h3>
+                    <img src="{{ file_path }}" alt="Original MRI Scan">
+                </div>
+                {% if has_tumor %}
+                <div class="image-box">
+                    <h3>Detection Result</h3>
+                    <img src="{{ localized_file_path }}" alt="Tumor Detection">
+                </div>
+                {% endif %}
+            </div>
+
+            {% if coordinates_3d %}
+            <div class="coordinates">
+                <h3>3D Tumor Coordinates (Normalized)</h3>
+                <p>These coordinates can be used to create a 3D model of the tumor:</p>
+                <pre>{{ coordinates_3d }}</pre>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

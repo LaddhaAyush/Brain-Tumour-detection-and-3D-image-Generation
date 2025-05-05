@@ -1,0 +1,2923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Interactive Brain Model with Tumor Visualization</title>
+  <link rel="stylesheet" href="/static/components/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .anatomical-panel {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: rgba(27, 38, 59, 0.95);
+      color: white;
+      padding: 18px;
+      border-radius: 8px;
+      width: 300px;
+      z-index: 900;
+      font-size: 14px;
+      display: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-height: 70vh;
+      overflow-y: auto;
+      border: 1px solid rgba(5, 194, 201, 0.15);
+      backdrop-filter: blur(5px);
+    }
+    
+    .critical-structures {
+      margin-top: 15px;
+      border-top: 1px solid rgba(5, 194, 201, 0.2);
+      padding-top: 15px;
+    }
+    
+    .structure-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      background-color: rgba(13, 27, 42, 0.5);
+    }
+    
+    .structure-item:hover {
+      background-color: rgba(15, 76, 129, 0.3);
+      transform: translateX(-3px);
+    }
+    
+    .structure-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    
+    .structure-text {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+    
+    .structure-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #ffffff;
+    }
+    
+    .structure-distance {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .distance-safe {
+      background-color: #2ecc71;
+    }
+    
+    .distance-close {
+      background-color: #f39c12;
+    }
+    
+    .distance-critical {
+      background-color: #e74c3c;
+    }
+
+    .switch-view-btn {
+      background-color: #36b5cd;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    .switch-view-btn:hover {
+      background-color: #2994a7;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(54, 181, 205, 0.4);
+    }
+    
+    .tumor-type-label {
+      position: fixed;
+      top: 70px;
+      left: 40%;
+      transform: translateX(-50%);
+      background: rgba(5, 194, 201, 0.8);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      z-index: 900;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(5px);
+    }
+    
+    .panel-section {
+      margin-bottom: 18px;
+    }
+    
+    .panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #05c2c9;
+    }
+    
+    .panel-subtitle {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    /* Functional View Styles */
+    .functional-view-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(0,0,0,0) 50%, rgba(5, 194, 201, 0.05) 100%);
+      z-index: 800;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .functional-view-active .functional-view-overlay {
+      opacity: 1;
+    }
+    
+    .functional-view-active #tumorTypeLabel {
+      background: rgba(15, 76, 129, 0.9);
+    }
+    
+    .structure-highlight {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 850;
+      box-shadow: 0 0 15px 5px rgba(255,255,255,0.7);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .functional-view-active .structure-highlight {
+      opacity: 1;
+    }
+    
+    .motor-highlight {
+      background-color: rgba(231, 76, 60, 0.3);
+      width: 50px;
+      height: 50px;
+    }
+    
+    .visual-highlight {
+      background-color: rgba(5, 194, 201, 0.3);
+      width: 40px;
+      height: 40px;
+    }
+    
+    .language-highlight {
+      background-color: rgba(243, 156, 18, 0.3);
+      width: 45px;
+      height: 45px;
+    }
+    
+    .vessel-highlight {
+      background-color: rgba(46, 204, 113, 0.3);
+      width: 30px;
+      height: 30px;
+    }
+    
+    /* Add a draggable handle to let users position the panel */
+    .panel-handle {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: rgba(5, 194, 201, 0.2);
+      border-radius: 8px 8px 0 0;
+      cursor: move;
+    }
+    
+    .impact-assessment {
+      margin-top: 15px;
+      border-top: 1px solid rgba(5, 194, 201, 0.2);
+      padding-top: 15px;
+    }
+    
+    .impact-description {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    #ui-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 1000;
+    }
+
+    .control-btn {
+      background-color: rgba(27, 38, 59, 0.9);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(5, 194, 201, 0.15);
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .control-btn:hover {
+      background-color: rgba(5, 194, 201, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background-color: rgba(27, 38, 59, 0.9);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1000;
+      border: 1px solid rgba(5, 194, 201, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .back-btn:hover {
+      background-color: rgba(5, 194, 201, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Add an arrow icon */
+    .back-btn:before {
+      content: "←";
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loadingScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0d1b2a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000;">
+    <div style="font-size: 24px; color: #05c2c9; font-weight: 600; margin-bottom: 20px; font-family: 'Poppins', sans-serif;">Loading Brain Model</div>
+    <div style="width: 200px; height: 6px; background-color: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; position: relative;">
+      <div id="loadingBar" style="position: absolute; top: 0; left: 0; height: 100%; width: 0; background: linear-gradient(90deg, #05c2c9, #36b5cd); border-radius: 3px; transition: width 0.5s ease-out;"></div>
+    </div>
+    <div id="loadingPercent" style="margin-top: 10px; font-size: 14px; color: white; font-family: 'Poppins', sans-serif;">0%</div>
+  </div>
+
+  <div id="tumorCoordinateForm" class="coordinate-form">
+    <h3>Tumor Coordinates from Scan</h3>
+    <p>These coordinates were automatically extracted from your MRI scan</p>
+    <div class="coordinate-inputs">
+      <div class="point-input">
+        <label>Point 1:</label>
+        <input type="number" id="x1" step="0.01" placeholder="X" />
+        <input type="number" id="y1" step="0.01" placeholder="Y" />
+        <input type="number" id="z1" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 2:</label>
+        <input type="number" id="x2" step="0.01" placeholder="X" />
+        <input type="number" id="y2" step="0.01" placeholder="Y" />
+        <input type="number" id="z2" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 3:</label>
+        <input type="number" id="x3" step="0.01" placeholder="X" />
+        <input type="number" id="y3" step="0.01" placeholder="Y" />
+        <input type="number" id="z3" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 4:</label>
+        <input type="number" id="x4" step="0.01" placeholder="X" />
+        <input type="number" id="y4" step="0.01" placeholder="Y" />
+        <input type="number" id="z4" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 5:</label>
+        <input type="number" id="x5" step="0.01" placeholder="X" />
+        <input type="number" id="y5" step="0.01" placeholder="Y" />
+        <input type="number" id="z5" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 6:</label>
+        <input type="number" id="x6" step="0.01" placeholder="X" />
+        <input type="number" id="y6" step="0.01" placeholder="Y" />
+        <input type="number" id="z6" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 7:</label>
+        <input type="number" id="x7" step="0.01" placeholder="X" />
+        <input type="number" id="y7" step="0.01" placeholder="Y" />
+        <input type="number" id="z7" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 8:</label>
+        <input type="number" id="x8" step="0.01" placeholder="X" />
+        <input type="number" id="y8" step="0.01" placeholder="Y" />
+        <input type="number" id="z8" step="0.01" placeholder="Z" />
+      </div>
+    </div>
+    <div class="form-error" id="coordinateError"></div>
+    <div class="form-buttons">
+      <button id="createTumorBtn">Create Tumor</button>
+      <button id="useDefaultCoordinatesBtn">Use Default Coordinates</button>
+      <a href="/" class="btn btn-secondary" style="margin-top: 10px; background-color: #6c757d; color: white; text-decoration: none; display: inline-block; padding: 10px; border-radius: 5px;">Back to Scanner</a>
+    </div>
+  </div>
+
+  <div id="label">Brain Part</div>
+  <div id="info">
+    <h3>Interactive Brain Model</h3>
+    <p>Zoom in close to the brain to see it explode for better tumor analysis.</p>
+    <p>Double-click to focus on tumor</p>
+    <p><strong>Keyboard Controls:</strong></p>
+    <p>+ : Increase brain size</p>
+    <p>- : Decrease brain size</p>
+    <p>R : Reset view</p>
+    <p>Space : Toggle explosion</p>
+    <p>Tab : Cycle through parts</p>
+    <p>A : Toggle tumor axis</p>
+    <p>S : Show/hide anatomical structures</p>
+    <p>H : Toggle affected regions</p>
+    <p>F : Toggle functional view</p>
+  </div>
+  <div id="distanceIndicator">Distance: 30.00</div>
+  <div class="loading">Loading brain model...</div>
+  <div id="errorMessage"></div>
+  <div id="loadingProgress"><div id="progressBar"></div></div>
+  <button id="changeTumorBtn" class="change-tumor-btn">Change Tumor Location</button>
+  
+  <!-- New tumor type indicator -->
+  <div id="tumorTypeLabel" class="tumor-type-label">Analyzing Tumor...</div>
+  
+  <!-- Anatomical structures panel -->
+  <div id="anatomicalPanel" class="anatomical-panel">
+    <div class="panel-handle"></div>
+    <div class="panel-section">
+      <div class="panel-title">Anatomical Analysis</div>
+      <div id="tumorRegion" class="panel-subtitle">Processing tumor location...</div>
+    </div>
+    
+    <div class="critical-structures">
+      <div class="panel-subtitle">Proximity to Critical Structures:</div>
+      <div class="structure-item">
+        <div class="structure-indicator distance-safe" id="motorPathwayIndicator"></div>
+        <div class="structure-text">
+          <div class="structure-name">Motor Pathway</div>
+          <div class="structure-distance" id="motorPathwayDistance">Calculating...</div>
+        </div>
+      </div>
+      <div class="structure-item">
+        <div class="structure-indicator distance-safe" id="visualPathwayIndicator"></div>
+        <div class="structure-text">
+          <div class="structure-name">Visual Pathway</div>
+          <div class="structure-distance" id="visualPathwayDistance">Calculating...</div>
+        </div>
+      </div>
+      <div class="structure-item">
+        <div class="structure-indicator distance-close" id="languageAreaIndicator"></div>
+        <div class="structure-text">
+          <div class="structure-name">Language Area</div>
+          <div class="structure-distance" id="languageAreaDistance">Calculating...</div>
+        </div>
+      </div>
+      <div class="structure-item">
+        <div class="structure-indicator distance-safe" id="bloodVesselIndicator"></div>
+        <div class="structure-text">
+          <div class="structure-name">Major Blood Vessels</div>
+          <div class="structure-distance" id="bloodVesselDistance">Calculating...</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- New Impact Assessment Section -->
+    <div class="panel-section impact-assessment">
+      <div class="panel-title">Impact Assessment</div>
+      <div id="impactSummary" class="panel-subtitle">Analyzing potential impact...</div>
+      
+      <div class="impact-details">
+        <div class="panel-subtitle">Functional Impact:</div>
+        <div id="functionalImpact" class="impact-description">
+          Calculating functional impact...
+        </div>
+        
+        <div class="panel-subtitle">Potential Symptoms:</div>
+        <ul id="symptomsList" class="symptoms-list">
+          <li>Analyzing symptoms...</li>
+        </ul>
+        
+        <div class="panel-subtitle">Long-term Considerations:</div>
+        <div id="longTermImpact" class="impact-description">
+          Analyzing long-term impact...
+        </div>
+      </div>
+    </div>
+    
+    <!-- Add panel buttons section -->
+    <div class="panel-buttons">
+      <button id="toggleFunctionalView" class="toggle-button">Functional View</button>
+      <button id="toggleAffectedRegions" class="toggle-button">Affected Regions</button>
+    </div>
+  </div>
+
+  <!-- Add functional view overlay elements -->
+  <div id="functionalViewOverlay" class="functional-view-overlay"></div>
+  <div id="motorHighlight" class="structure-highlight motor-highlight"></div>
+  <div id="visualHighlight" class="structure-highlight visual-highlight"></div>
+  <div id="languageHighlight" class="structure-highlight language-highlight"></div>
+  <div id="vesselHighlight" class="structure-highlight vessel-highlight"></div>
+
+  <!-- Add blinking border for affected regions mode -->
+  <div class="blink-border"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+
+  <!-- Update CSS styles for affected regions and fix overlapping panels -->
+  <style>
+    .region-tooltip {
+      position: absolute;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-size: 14px;
+      max-width: 250px;
+      z-index: 1500;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      border-left: 4px solid #7e57c2; /* Consistent purple color */
+    }
+    
+    /* Position the anatomical panel higher to avoid overlap with coordinates */
+    .anatomical-panel {
+      top: 100px;
+      right: 20px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    
+    /* Style for coordinates display */
+    #tumor-coords {
+      position: absolute !important;
+      bottom: 60px !important;
+      right: 20px !important;
+      background: rgba(0,0,0,0.7) !important;
+      color: white !important;
+      padding: 10px !important;
+      border-radius: 5px !important;
+      font-family: monospace !important;
+      z-index: 900 !important;
+    }
+    
+    /* Use consistent color for affected region highlighting */
+    .affected-region-highlight {
+      color: #7e57c2 !important; /* Purple color */
+    }
+    
+    @keyframes pulse-highlight {
+      0% { emissiveIntensity: 0.3; }
+      50% { emissiveIntensity: 0.8; }
+      100% { emissiveIntensity: 0.3; }
+    }
+    
+    /* Remove duplicate shortcuts panel */
+    #shortcutsHint {
+      bottom: 20px;
+      left: 20px;
+    }
+    
+    /* Fix any overlapping issues with distance indicator */
+    #distanceIndicator {
+      top: 20px !important;
+      right: 120px !important;
+    }
+  </style>
+  
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.11.4/dist/gsap.min.js"></script>
+  <script src="/static/components/script.js"></script>
+
+  <!-- Script to populate the coordinate form -->
+  <script>
+    // At the top of your script, add global variables
+    let tumorCube;
+    
+    // Define actual brain part coordinates from the 3D model
+    // Using brain part coordinates defined elsewhere
+    const brainCoordinates = {
+        pituitary: { x: 8.0956, y: 0.4992, z: -6.8596 },
+        frontal: { x: 11.812, y: -0.30038, z: 8.742 },
+        parietal: { x: -7.2249, y: -0.30014, z: 10.883 },
+        occipital: { x: -15.42, y: -0.30001, z: -1.0365 },
+        cerebellum: { x: -7.0888, y: 0.49958, z: -9.1671 },
+        brainStem: { x: 3.9349, y: 0.49944, z: -5.6843 },
+        corpus: { x: 3.4753, y: -0.30032, z: 5.9531 },
+        temporal: { x: 2.3569, y: -0.30022, z: -2.3855 }
+    };
+
+    // Check if coordinates were passed from Flask
+    const urlParams = new URLSearchParams(window.location.search);
+    const coordinatesParam = urlParams.get('coordinates');
+    let tumorType = urlParams.get('tumor_type') || 'Unknown';
+    let brainRegion = urlParams.get('brain_region') || 'Unknown Region';
+    let impactDataParam = urlParams.get('impact_data');
+    let impactData = {};
+    
+    // Parse the impact data if available
+    if (impactDataParam) {
+      try {
+        impactData = JSON.parse(decodeURIComponent(impactDataParam));
+      } catch (e) {
+        console.error("Error parsing impact data:", e);
+        impactData = {};
+      }
+    }
+    
+    // Store affected regions for highlighting
+    let affectedRegions = [];
+    let affectedRegionHighlights = {};
+    let affectedRegionsActive = false;
+    
+    // Function to generate anatomically accurate coordinates for different tumor types
+    function generateAnatomicallyAccurateCoordinates(tumorType) {
+      console.log("Generating anatomically accurate coordinates for", tumorType);
+      
+      // Start with base coordinates (set to known brain part center)
+      let baseCoords;
+      const wobbleAmount = 0.1; // Small deviation for variation
+      
+      if (tumorType.toLowerCase().includes('pituitary')) {
+        // Use exact pituitary coordinates
+        baseCoords = {
+          x: brainCoordinates.pituitary.x,
+          y: brainCoordinates.pituitary.y,
+          z: brainCoordinates.pituitary.z
+        };
+        console.log("Using pituitary base coordinates:", baseCoords);
+      } 
+      else if (tumorType.toLowerCase().includes('glioma')) {
+        // Gliomas appear typically in cerebral hemispheres
+        const gliomaParts = ['frontal', 'parietal', 'temporal'];
+        const selectedPart = gliomaParts[Math.floor(Math.random() * gliomaParts.length)];
+        baseCoords = {
+          x: brainCoordinates[selectedPart].x + (Math.random() * 2 - 1), // Small random offset
+          y: brainCoordinates[selectedPart].y,
+          z: brainCoordinates[selectedPart].z + (Math.random() * 2 - 1) // Small random offset
+        };
+        console.log(`Using glioma base coordinates from ${selectedPart}:`, baseCoords);
+      }
+      else if (tumorType.toLowerCase().includes('meningioma')) {
+        // Meningiomas appear on the surface of the brain
+        const surfacePosition = {
+          x: (brainCoordinates.frontal.x + brainCoordinates.parietal.x) / 2,
+          y: brainCoordinates.frontal.y - 0.5, // Push to surface
+          z: (brainCoordinates.frontal.z + brainCoordinates.parietal.z) / 2
+        };
+        baseCoords = surfacePosition;
+        console.log("Using meningioma surface coordinates:", baseCoords);
+      }
+      else {
+        // Default to a random brain part
+        const allParts = Object.keys(brainCoordinates);
+        const randomPart = allParts[Math.floor(Math.random() * allParts.length)];
+        baseCoords = {
+          x: brainCoordinates[randomPart].x,
+          y: brainCoordinates[randomPart].y,
+          z: brainCoordinates[randomPart].z
+        };
+        console.log(`Using random part (${randomPart}) coordinates:`, baseCoords);
+      }
+      
+      // Generate 8 points around the base coordinates to form a box
+      const coordinates = [];
+      const size = 0.2; // Size of tumor "box"
+      
+      // Generate 8 vertices of a box centered at the base coordinates
+      coordinates.push([baseCoords.x - size, baseCoords.y - size, baseCoords.z - size]);
+      coordinates.push([baseCoords.x + size, baseCoords.y - size, baseCoords.z - size]);
+      coordinates.push([baseCoords.x + size, baseCoords.y + size, baseCoords.z - size]);
+      coordinates.push([baseCoords.x - size, baseCoords.y + size, baseCoords.z - size]);
+      coordinates.push([baseCoords.x - size, baseCoords.y - size, baseCoords.z + size]);
+      coordinates.push([baseCoords.x + size, baseCoords.y - size, baseCoords.z + size]);
+      coordinates.push([baseCoords.x + size, baseCoords.y + size, baseCoords.z + size]);
+      coordinates.push([baseCoords.x - size, baseCoords.y + size, baseCoords.z + size]);
+      
+      // Add a small random wobble to each point
+      for (let i = 0; i < 8; i++) {
+        coordinates[i][0] += (Math.random() * 2 - 1) * wobbleAmount;
+        coordinates[i][1] += (Math.random() * 2 - 1) * wobbleAmount;
+        coordinates[i][2] += (Math.random() * 2 - 1) * wobbleAmount;
+      }
+      
+      return coordinates;
+    }
+
+    // Handle coordinates if they were passed in URL
+    if (coordinatesParam) {
+      try {
+        // Parse the coordinates from the URL parameter
+        const coordinates = JSON.parse(decodeURIComponent(coordinatesParam));
+        
+        // Check if we should replace with anatomically accurate coordinates
+        let finalCoordinates = coordinates;
+        if (coordinates.length === 8 && tumorType) {
+          // If the coordinates are all in the 0-1 range, they're likely not anatomically accurate
+          const allInNormalRange = coordinates.every(
+            coord => coord[0] >= 0 && coord[0] <= 1 && 
+                    coord[1] >= 0 && coord[1] <= 1 && 
+                    coord[2] >= 0 && coord[2] <= 1
+          );
+          
+          if (allInNormalRange) {
+            console.log("Replacing normalized coordinates with anatomically accurate ones");
+            finalCoordinates = generateAnatomicallyAccurateCoordinates(tumorType);
+          }
+        }
+        
+        // Fill in the coordinate form
+        if (finalCoordinates && finalCoordinates.length === 8) {
+          for (let i = 0; i < 8; i++) {
+            document.getElementById(`x${i+1}`).value = finalCoordinates[i][0];
+            document.getElementById(`y${i+1}`).value = finalCoordinates[i][1];
+            document.getElementById(`z${i+1}`).value = finalCoordinates[i][2];
+          }
+          
+          // Auto-submit the form to create the tumor immediately
+          setTimeout(() => {
+            document.getElementById('createTumorBtn').click();
+            
+            // After tumor is created, show anatomical panel
+            setTimeout(() => {
+              analyzeTumorLocation(finalCoordinates, tumorType, brainRegion, impactData);
+              document.getElementById('anatomicalPanel').style.display = 'block';
+              
+              // Display tumor type information prominently
+              document.getElementById('tumorTypeLabel').innerText = tumorType.charAt(0).toUpperCase() + tumorType.slice(1);
+            }, 2000);
+          }, 1000);
+        }
+      } catch (e) {
+        console.error("Error parsing coordinates:", e);
+        document.getElementById('coordinateError').textContent = "Error parsing coordinates from URL";
+      }
+    }
+    
+    // Detect tumor type based on coordinates and update UI
+    function analyzeTumorLocation(coordinates, tumorType, brainRegion, impactData) {
+      console.log("Analyzing tumor location:", {tumorType, brainRegion, impactData});
+      
+      // Calculate center of coordinates
+      let center = {x: 0, y: 0, z: 0};
+      coordinates.forEach(coord => {
+        center.x += coord[0];
+        center.y += coord[1];
+        center.z += coord[2];
+      });
+      center.x /= coordinates.length;
+      center.y /= coordinates.length;
+      center.z /= coordinates.length;
+      
+      // Use provided brain region if available, otherwise determine from coordinates
+      if (!brainRegion || brainRegion === "Unknown Region") {
+      // Determine brain region based on tumor type and position
+      if (tumorType.toLowerCase().includes('pituitary')) {
+          brainRegion = 'Pituitary Fossa';
+      } else if (tumorType.toLowerCase().includes('meningioma')) {
+        // Determine specific location based on coordinates
+        if (center.y > 0.6) {
+            brainRegion = 'Superior Meninges';
+        } else if (center.x > 0.6) {
+            brainRegion = 'Lateral Meninges (Right)';
+        } else if (center.x < 0.4) {
+            brainRegion = 'Lateral Meninges (Left)';
+        } else {
+            brainRegion = 'Central Meninges';
+        }
+      } else if (tumorType.toLowerCase().includes('glioma')) {
+        // Map glioma location based on coordinates
+        if (center.y > 0.6 && center.z > 0.5) {
+            brainRegion = 'Frontal Lobe';
+        } else if (center.y > 0.5 && center.z < 0.4) {
+            brainRegion = 'Parietal Lobe';
+        } else if (center.y < 0.4 && center.z < 0.4) {
+            brainRegion = 'Occipital Lobe';
+        } else if (center.x > 0.6 && center.y < 0.5) {
+            brainRegion = 'Temporal Lobe (Right)';
+        } else if (center.x < 0.4 && center.y < 0.5) {
+            brainRegion = 'Temporal Lobe (Left)';
+        } else {
+            brainRegion = 'Deep Brain Structure';
+        }
+      } else {
+        // Fallback to coordinate-based determination
+        let brainRegions = [
+          {name: 'Frontal Lobe', condition: (c) => c.y > 0.6 && c.z > 0.45},
+          {name: 'Temporal Lobe', condition: (c) => c.x > 0.6 && c.y < 0.5},
+          {name: 'Parietal Lobe', condition: (c) => c.y > 0.5 && c.x < 0.4 && c.z < 0.5},
+          {name: 'Occipital Lobe', condition: (c) => c.z < 0.3 && c.y > 0.4},
+          {name: 'Cerebellum', condition: (c) => c.y < 0.3 && c.z < 0.4},
+          {name: 'Brain Stem', condition: (c) => c.y < 0.2 && c.z > 0.5},
+          {name: 'Corpus Callosum', condition: (c) => Math.abs(c.x - 0.5) < 0.1 && c.y > 0.5},
+          {name: 'Pituitary Gland', condition: (c) => Math.abs(c.x - 0.5) < 0.1 && c.y < 0.3 && c.z > 0.6}
+        ];
+        
+        // Find matching brain region
+        for (let region of brainRegions) {
+          if (region.condition(center)) {
+              brainRegion = region.name;
+            break;
+          }
+        }
+        
+          if (!brainRegion) brainRegion = 'Deep Brain Structure';
+        }
+      }
+      
+      // Calculate proximity to critical structures
+      // Adjust structure positions based on tumor type
+      // Different tumor types have different critical structures nearby
+      let structures = [];
+      
+      if (tumorType.toLowerCase().includes('pituitary')) {
+        structures = [
+          {
+            name: 'motorPathway',
+            center: {x: 0.5, y: 0.35, z: 0.4},  // Adjusted for pituitary
+            distance: 0
+          },
+          {
+            name: 'visualPathway',
+            center: {x: 0.5, y: 0.29, z: 0.55},  // Optic chiasm is very close to pituitary
+            distance: 0
+          },
+          {
+            name: 'languageArea',
+            center: {x: 0.7, y: 0.5, z: 0.4},  // Far from pituitary
+            distance: 0
+          },
+          {
+            name: 'bloodVessel',
+            center: {x: 0.5, y: 0.3, z: 0.63},  // Carotid siphon near pituitary
+            distance: 0
+          }
+        ];
+      } else if (tumorType.toLowerCase().includes('meningioma')) {
+        structures = [
+          {
+            name: 'motorPathway',
+            center: {x: 0.4, y: 0.7, z: 0.5},
+            distance: 0
+          },
+          {
+            name: 'visualPathway',
+            center: {x: 0.5, y: 0.4, z: 0.3},
+            distance: 0
+          },
+          {
+            name: 'languageArea',
+            center: {x: 0.7, y: 0.6, z: 0.4},
+            distance: 0
+          },
+          {
+            name: 'bloodVessel',
+            center: {x: 0.5, y: 0.6, z: 0.5},  // Major sinuses
+            distance: 0
+          }
+        ];
+      } else {
+        // Default structures for gliomas and other tumors
+        structures = [
+          {
+            name: 'motorPathway',
+            center: {x: 0.3, y: 0.7, z: 0.5},
+            distance: 0
+          },
+          {
+            name: 'visualPathway',
+            center: {x: 0.5, y: 0.3, z: 0.2},
+            distance: 0
+          },
+          {
+            name: 'languageArea',
+            center: {x: 0.7, y: 0.6, z: 0.4},
+            distance: 0
+          },
+          {
+            name: 'bloodVessel',
+            center: {x: 0.5, y: 0.5, z: 0.5},
+            distance: 0
+          }
+        ];
+      }
+      
+      // Calculate distances
+      structures.forEach(structure => {
+        const dx = center.x - structure.center.x;
+        const dy = center.y - structure.center.y;
+        const dz = center.z - structure.center.z;
+        structure.distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      });
+      
+      // Update UI
+      document.getElementById('tumorRegion').innerHTML = `Region: ${brainRegion}`;
+      document.getElementById('tumorTypeLabel').innerText = tumorType.charAt(0).toUpperCase() + tumorType.slice(1);
+      
+      // Update proximity indicators
+      structures.forEach(structure => {
+        const distanceElement = document.getElementById(`${structure.name}Distance`);
+        const indicatorElement = document.getElementById(`${structure.name}Indicator`);
+        
+        let distanceClass = 'distance-safe';
+        let distanceText = 'Safe distance';
+        
+        // Adjust thresholds based on tumor type
+        let criticalThreshold = 0.1;
+        let closeThreshold = 0.2;
+        
+        // Pituitary tumors are naturally close to optic chiasm
+        if (tumorType.toLowerCase().includes('pituitary') && structure.name === 'visualPathway') {
+          criticalThreshold = 0.05;
+          closeThreshold = 0.1;
+        }
+        
+        if (structure.distance < criticalThreshold) {
+          distanceClass = 'distance-critical';
+          distanceText = 'Critical proximity';
+        } else if (structure.distance < closeThreshold) {
+          distanceClass = 'distance-close';
+          distanceText = 'Close proximity';
+        }
+        
+        distanceElement.textContent = distanceText;
+        indicatorElement.className = `structure-indicator ${distanceClass}`;
+      });
+      
+      // Update impact assessment with data from server if available
+      if (impactData && Object.keys(impactData).length > 0) {
+        analyzeImpactWithData(tumorType, brainRegion, structures, impactData);
+      } else {
+        // Fallback to client-side impact analysis
+        analyzeImpact(tumorType, brainRegion, structures);
+      }
+      
+      // Determine affected regions based on tumor location and type
+      console.log("About to determine affected regions");
+      determineAffectedRegions(tumorType, brainRegion, center);
+      console.log("Affected regions determined:", affectedRegions);
+    }
+    
+    // New function to determine affected brain regions
+    function determineAffectedRegions(tumorType, brainRegion, tumorCenter) {
+      console.log("Determining affected regions for:", tumorType, brainRegion);
+      
+      // Clear previous affected regions
+      affectedRegions = [];
+      
+      // Default severity based on tumor type
+      let defaultSeverity = 'medium';
+      if (tumorType.toLowerCase().includes('glioma')) {
+        defaultSeverity = 'high';
+      } else if (tumorType.toLowerCase().includes('meningioma')) {
+        defaultSeverity = 'medium';
+      } else if (tumorType.toLowerCase().includes('pituitary')) {
+        defaultSeverity = 'low';
+      }
+      
+      // Map brain regions to parts in the 3D model
+      // Primary affected region based on tumor location
+      if (brainRegion.includes("Frontal Lobe")) {
+        affectedRegions.push({
+          name: "Frontal Lobe",
+          severity: defaultSeverity,
+          description: "Controls executive functions, motor skills, and personality",
+          modelParts: ["Frontal Lobe", "Cerebrum"]
+        });
+      }
+      else if (brainRegion.includes("Temporal Lobe")) {
+        affectedRegions.push({
+          name: "Temporal Lobe",
+          severity: defaultSeverity,
+          description: "Processes auditory information and language",
+          modelParts: ["Temporal Lobe"]
+        });
+      }
+      else if (brainRegion.includes("Parietal Lobe")) {
+        affectedRegions.push({
+          name: "Parietal Lobe",
+          severity: defaultSeverity,
+          description: "Integrates sensory information",
+          modelParts: ["Parietal Lobe", "Occupit Lobe"] // Parietal might be mapped to Occupit in the model
+        });
+      }
+      else if (brainRegion.includes("Occipital Lobe")) {
+        affectedRegions.push({
+          name: "Occipital Lobe",
+          severity: defaultSeverity,
+          description: "Processes visual information",
+          modelParts: ["Occupit Lobe"]
+        });
+      }
+      else if (brainRegion.includes("Cerebellum")) {
+        affectedRegions.push({
+          name: "Cerebellum",
+          severity: defaultSeverity,
+          description: "Coordinates movement and balance",
+          modelParts: ["Pitua Lobe"] // Cerebellum might be mapped to Pitua in the model
+        });
+      }
+      else if (brainRegion.includes("Brain Stem")) {
+        affectedRegions.push({
+          name: "Brain Stem",
+          severity: "high", // Always high for brain stem
+          description: "Controls vital functions like breathing and heart rate",
+          modelParts: ["Brain Stem"]
+        });
+      }
+      else if (brainRegion.includes("Corpus Callosum")) {
+        affectedRegions.push({
+          name: "Corpus Callosum",
+          severity: defaultSeverity,
+          description: "Connects left and right hemispheres",
+          modelParts: ["Corpus"]
+        });
+      }
+      else if (brainRegion.includes("Pituitary")) {
+        affectedRegions.push({
+          name: "Pituitary Gland",
+          severity: "medium",
+          description: "Regulates hormones and affects nearby optic pathways",
+          modelParts: ["Pitua Lobe"]
+        });
+      }
+      else {
+        // Generic brain region if none of the above match
+        affectedRegions.push({
+          name: "Brain Region",
+          severity: defaultSeverity,
+          description: "Affected brain tissue near tumor site",
+          modelParts: ["Cerebrum", "Corpus"] // Default to cerebrum if region unknown
+        });
+      }
+      
+      // Each tumor type has different patterns of impact
+      if (tumorType.toLowerCase().includes('glioma')) {
+        // Gliomas are infiltrative with diffuse borders
+        
+        // 1. Always add primary region as high impact
+        if (affectedRegions.length > 0) {
+          affectedRegions[0].severity = 'high';
+        }
+        
+        // 2. Add adjacent regions with lower impact - gliomas infiltrate along white matter tracts
+        if (brainRegion.includes("Frontal Lobe")) {
+          // Add corpus callosum and motor pathways for frontal gliomas
+          affectedRegions.push({
+            name: "Corpus Callosum",
+            severity: "medium",
+            description: "White matter tract connecting hemispheres",
+            modelParts: ["Corpus"]
+          });
+          
+          // Add motor pathway impacts
+          affectedRegions.push({
+            name: "Motor Pathway",
+            severity: "high", 
+            description: "Pathway controlling voluntary movement",
+            modelParts: ["Brain Stem", "Cerebrum"]
+          });
+        } 
+        else if (brainRegion.includes("Temporal Lobe")) {
+          // Add hippocampus and memory areas for temporal gliomas
+          affectedRegions.push({
+            name: "Memory Structures",
+            severity: "medium",
+            description: "Areas involved in memory formation and recall",
+            modelParts: ["Cerebrum"]
+          });
+          
+          // Add language areas if it's left temporal lobe
+          if (brainRegion.includes("Left")) {
+            affectedRegions.push({
+              name: "Language Centers",
+              severity: "high",
+              description: "Areas critical for language processing",
+              modelParts: ["Temporal Lobe", "Frontal Lobe"]
+            });
+          }
+        }
+        else if (brainRegion.includes("Parietal Lobe")) {
+          // Add sensory tracts for parietal gliomas
+          affectedRegions.push({
+            name: "Sensory Pathways",
+            severity: "medium",
+            description: "Pathways processing sensory information",
+            modelParts: ["Cerebrum", "Brain Stem"]
+          });
+        }
+        else if (brainRegion.includes("Occipital Lobe")) {
+          // Add visual pathways for occipital gliomas
+          affectedRegions.push({
+            name: "Visual Pathways",
+            severity: "high",
+            description: "Pathways processing visual information",
+            modelParts: ["Occupit Lobe", "Cerebrum"]
+          });
+        }
+        
+        // 3. Always add white matter tracts for all gliomas
+        affectedRegions.push({
+          name: "White Matter Tracts",
+          severity: "medium",
+          description: "Neural highways connecting brain regions",
+          modelParts: ["Cerebrum", "Corpus"]
+        });
+      } 
+      else if (tumorType.toLowerCase().includes('meningioma')) {
+        // Meningiomas are compressive rather than infiltrative
+        
+        // 1. Add meninges as the primary site
+        affectedRegions.push({
+          name: "Meninges",
+          severity: "high",
+          description: "Protective membranes covering the brain",
+          modelParts: ["Cerebrum"] // Highlight outer surface
+        });
+        
+        // 2. Add compression effect on primary adjacent region
+        // The first region we added is the main affected region
+        if (affectedRegions.length > 0) {
+          const mainRegion = affectedRegions[0].name;
+          affectedRegions.push({
+            name: `${mainRegion} Surface (Compressed)`,
+            severity: "medium",
+            description: "Area experiencing pressure from the meningioma",
+            modelParts: affectedRegions[0].modelParts
+          });
+        }
+        
+        // 3. Meningiomas usually don't affect deeper structures
+        // Instead they create local pressure effects
+        
+        // Add blood vessels for all meningiomas (they often involve vessels)
+        affectedRegions.push({
+          name: "Blood Vessels",
+          severity: "medium",
+          description: "Vascular structures near the tumor",
+          modelParts: ["Cerebrum"]
+        });
+      }
+      else if (tumorType.toLowerCase().includes('pituitary')) {
+        // Pituitary tumors have very specific effects
+        
+        // Clear and replace with pituitary-specific regions
+        affectedRegions = [
+          {
+            name: "Pituitary Gland",
+            severity: "high",
+            description: "Master endocrine gland controlling hormone production",
+            modelParts: ["Pitua Lobe"]
+          },
+          {
+            name: "Optic Chiasm",
+            severity: "medium",
+            description: "Structure where optic nerves cross, often compressed by pituitary tumors",
+            modelParts: ["Cerebrum"]
+          },
+          {
+            name: "Hypothalamus",
+            severity: "low",
+            description: "Brain region controlling hormone release and many bodily functions",
+            modelParts: ["Cerebrum"]
+          }
+        ];
+      }
+      
+      console.log("Determined affected regions:", affectedRegions);
+    }
+    
+    // Enhanced function to analyze tumor impact with server-provided data
+    function analyzeImpactWithData(tumorType, region, structures, impactData) {
+      let impactSummary = '';
+      let functionalImpact = '';
+      let symptoms = impactData.potential_symptoms || [];
+      let longTermImpact = '';
+      
+      // Determine impact severity
+      let impactSeverity = 'medium-impact';
+      if (impactData.impact_severity === 'high') {
+        impactSeverity = 'high-impact';
+      } else if (impactData.impact_severity === 'low') {
+        impactSeverity = 'low-impact';
+      }
+      
+      // Create impact summary based on affected functions
+      if (impactData.affected_functions && impactData.affected_functions.length > 0) {
+        impactSummary = `<span class="${impactSeverity}">Impact on ${impactData.affected_functions.join(', ')}</span>`;
+          } else {
+        impactSummary = `<span class="${impactSeverity}">Impact assessment incomplete</span>`;
+      }
+      
+      // Create functional impact description
+      if (impactData.affected_functions && impactData.affected_functions.length > 0) {
+        functionalImpact = `This ${tumorType} in the ${region} may affect ${impactData.affected_functions.join(', ')}. `;
+      } else {
+        functionalImpact = `This ${tumorType} in the ${region} requires further assessment. `;
+      }
+      
+      // Add proximity risks to the functional impact
+      if (impactData.proximity_risks && impactData.proximity_risks.length > 0) {
+        functionalImpact += `Additional risks include: ${impactData.proximity_risks.join(', ')}.`;
+      }
+      
+      // Create long-term impact based on location and severity
+      if (impactSeverity === 'high-impact') {
+        longTermImpact = "Significant rehabilitation likely needed. Potential for permanent deficits depending on treatment effectiveness.";
+      } else if (impactSeverity === 'medium-impact') {
+        longTermImpact = "Moderate rehabilitation may be required. Good potential for recovery with appropriate intervention.";
+      } else {
+        longTermImpact = "Good prognosis for functional recovery. Minimal long-term impact expected with appropriate treatment.";
+      }
+      
+      // Enhance with critical structure proximity data
+      const criticalProximity = structures.some(s => 
+        s.distance < 0.1 && (s.name === 'motorPathway' || s.name === 'visualPathway' || s.name === 'languageArea')
+      );
+      
+      if (criticalProximity) {
+        longTermImpact += " Proximity to critical neural pathways may complicate treatment planning.";
+      }
+      
+      // Update the impact assessment UI
+      document.getElementById('impactSummary').innerHTML = impactSummary;
+      document.getElementById('functionalImpact').textContent = functionalImpact;
+      
+      // Create symptoms list
+      const symptomsListEl = document.getElementById('symptomsList');
+      symptomsListEl.innerHTML = '';
+      
+      if (symptoms.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = "No specific symptoms identified";
+        symptomsListEl.appendChild(li);
+      } else {
+        symptoms.forEach(symptom => {
+          const li = document.createElement('li');
+          li.textContent = symptom;
+          symptomsListEl.appendChild(li);
+        });
+      }
+      
+      document.getElementById('longTermImpact').textContent = longTermImpact;
+    }
+    
+    // Original function to analyze tumor impact based on location and type
+    function analyzeImpact(tumorType, region, structures) {
+      let impactSummary = '';
+      let functionalImpact = '';
+      let symptoms = [];
+      let longTermImpact = '';
+      
+      // Analyze impact severity based on tumor type
+      let impactSeverity = 'medium-impact';
+      
+      if (tumorType.toLowerCase().includes('glioma')) {
+        impactSeverity = 'high-impact';
+      } else if (tumorType.toLowerCase().includes('meningioma')) {
+        impactSeverity = 'medium-impact';
+      } else if (tumorType.toLowerCase().includes('pituitary')) {
+        impactSeverity = 'low-impact';
+      }
+      
+      // Determine impact based on tumor region and type
+      if (region.includes('Frontal Lobe')) {
+        impactSummary = `<span class="${impactSeverity}">Moderate to significant impact on executive function</span>`;
+        functionalImpact = "The frontal lobe controls executive functions including decision-making, planning, personality expression, and social behavior. This tumor may disrupt these cognitive processes.";
+        symptoms = [
+          "Changes in personality or behavior",
+          "Difficulty with planning and organization",
+          "Impaired judgment",
+          "Decreased motivation (apathy)"
+        ];
+        longTermImpact = "Long-term rehabilitation likely needed for executive function recovery. Potential for permanent personality changes depending on exact tumor position and treatment approach.";
+      } 
+      else if (region.includes('Parietal Lobe')) {
+        impactSummary = `<span class="${impactSeverity}">Moderate impact on sensory processing and spatial awareness</span>`;
+        functionalImpact = "The parietal lobe processes sensory information and enables spatial awareness. This tumor may disrupt sensory integration, spatial navigation, and body awareness.";
+        symptoms = [
+          "Impaired sense of touch or temperature on opposite side of body",
+          "Difficulty with spatial orientation",
+          "Problems with reading or writing (if dominant hemisphere)",
+          "Left-right confusion"
+        ];
+        longTermImpact = "Potential for persistent sensory deficits. Rehabilitation likely to improve adaptation to sensory changes.";
+      }
+      else if (region.includes('Temporal Lobe')) {
+        const side = region.includes('Right') ? 'right' : 'left';
+        impactSummary = `<span class="${impactSeverity}">Significant impact on language and memory processing</span>`;
+        functionalImpact = `The ${side} temporal lobe is involved in auditory processing, language comprehension${side === 'left' ? ' (dominant for language)' : ''}, and memory formation. This tumor may disrupt these processes.`;
+        symptoms = [
+          side === 'left' ? "Language comprehension difficulties" : "Difficulty recognizing faces or objects",
+          "Memory problems, particularly verbal memory",
+          "Hearing disturbances or auditory hallucinations",
+          "Mood changes or emotional instability"
+        ];
+        longTermImpact = "Language therapy may be needed. Memory deficits could persist depending on treatment extent and effectiveness.";
+      }
+      else if (region.includes('Occipital Lobe')) {
+        impactSummary = `<span class="${impactSeverity}">Significant impact on visual processing</span>`;
+        functionalImpact = "The occipital lobe is primarily responsible for visual processing. This tumor is likely to disrupt visual perception and interpretation.";
+        symptoms = [
+          "Visual field defects (may affect specific portions of visual field)",
+          "Visual hallucinations",
+          "Difficulty recognizing objects or colors",
+          "Problems with reading or depth perception"
+        ];
+        longTermImpact = "Visual deficits may persist after treatment. Adaptation strategies can help manage permanent changes to vision.";
+      }
+      else if (region.includes('Cerebellum')) {
+        impactSummary = `<span class="${impactSeverity}">Significant impact on movement coordination</span>`;
+        functionalImpact = "The cerebellum coordinates voluntary movements, balance, posture, and motor learning. This tumor is likely to disrupt these motor functions.";
+        symptoms = [
+          "Poor balance and coordination",
+          "Unsteady gait (ataxia)",
+          "Slurred speech (dysarthria)",
+          "Difficulty with fine motor tasks"
+        ];
+        longTermImpact = "Physical therapy will be crucial. Recovery potential is generally good with appropriate rehabilitation.";
+      }
+      else if (region.includes('Brain Stem')) {
+        impactSummary = `<span class="${impactSeverity}">Critical impact on vital functions</span>`;
+        functionalImpact = "The brain stem controls vital functions including breathing, heart rate, and consciousness. This tumor location is concerning due to proximity to critical functions.";
+        symptoms = [
+          "Cranial nerve deficits (facial weakness, double vision, etc.)",
+          "Difficulty swallowing or speaking",
+          "Problems with respiratory control",
+          "Sensory or motor deficits on one or both sides of the body"
+        ];
+        longTermImpact = "Treatment approach must be carefully planned due to critical location. Long-term monitoring of vital functions may be necessary.";
+      }
+      else if (region.includes('Pituitary')) {
+        impactSummary = `<span class="${impactSeverity}">Primary impact on hormonal function</span>`;
+        functionalImpact = "The pituitary gland regulates multiple hormone systems. This tumor is likely disrupting normal pituitary function and hormone production.";
+        symptoms = [
+          "Hormonal imbalances (growth, reproductive, thyroid, adrenal)",
+          "Visual field defects (if pressing on optic chiasm)",
+          "Headaches",
+          "Fatigue or weakness"
+        ];
+        longTermImpact = "Hormone replacement therapy may be needed long-term. Visual effects typically improve after treatment if optic chiasm compression is relieved.";
+      }
+      else if (region.includes('Corpus Callosum')) {
+        impactSummary = `<span class="${impactSeverity}">Significant impact on interhemispheric communication</span>`;
+        functionalImpact = "The corpus callosum connects the left and right cerebral hemispheres. This tumor may disrupt communication between brain hemispheres.";
+        symptoms = [
+          "Disconnection syndrome (inability to name objects perceived with left visual field)",
+          "Difficulty with bimanual coordination",
+          "Problems with tasks requiring hemisphere coordination",
+          "Cognitive processing difficulties"
+        ];
+        longTermImpact = "Specialized cognitive rehabilitation approaches needed. Some deficits may persist depending on treatment effectiveness.";
+      }
+      else {
+        // Deep brain structure or other regions
+        impactSummary = `<span class="${impactSeverity}">Variable impact depending on exact structures involved</span>`;
+        functionalImpact = "Deep brain structures control various critical functions. The specific impact depends on the exact structures affected.";
+        symptoms = [
+          "Movement disorders possible",
+          "Sensory disturbances",
+          "Cognitive changes",
+          "Potential for multiple system effects"
+        ];
+        longTermImpact = "Detailed neurological assessment needed to determine specific functional impacts. Multimodal rehabilitation approach likely necessary.";
+      }
+      
+      // Further refine impact based on proximity to critical structures
+      const criticalProximity = structures.some(s => 
+        s.distance < 0.1 && (s.name === 'motorPathway' || s.name === 'visualPathway' || s.name === 'languageArea')
+      );
+      
+      const nearVessels = structures.find(s => s.name === 'bloodVessel').distance < 0.15;
+      
+      if (criticalProximity) {
+        functionalImpact += " Due to proximity to critical neural pathways, there is increased risk of functional deficits.";
+        
+        // Add specific symptoms based on which pathway is affected
+        structures.forEach(structure => {
+          if (structure.distance < 0.1) {
+            if (structure.name === 'motorPathway' && !symptoms.some(s => s.includes("weakness"))) {
+              symptoms.push("Weakness or paralysis on opposite side of body");
+            } else if (structure.name === 'visualPathway' && !symptoms.some(s => s.includes("visual"))) {
+              symptoms.push("Visual field defects (likely hemianopia)");
+            } else if (structure.name === 'languageArea' && !symptoms.some(s => s.includes("language"))) {
+              symptoms.push("Language deficits (aphasia)");
+            }
+          }
+        });
+      }
+      
+      if (nearVessels) {
+        longTermImpact += " Proximity to major blood vessels may complicate surgical approach and increase risk of vascular complications.";
+      }
+      
+      // Update the impact assessment UI
+      document.getElementById('impactSummary').innerHTML = impactSummary;
+      document.getElementById('functionalImpact').textContent = functionalImpact;
+      
+      // Create symptoms list
+      const symptomsListEl = document.getElementById('symptomsList');
+      symptomsListEl.innerHTML = '';
+      symptoms.forEach(symptom => {
+        const li = document.createElement('li');
+        li.textContent = symptom;
+        symptomsListEl.appendChild(li);
+      });
+      
+      document.getElementById('longTermImpact').textContent = longTermImpact;
+    }
+    
+    // Add toggle function for affected regions view
+    function toggleAffectedRegionsView() {
+      console.log("Toggling affected regions view, current state:", affectedRegionsActive);
+      
+      affectedRegionsActive = !affectedRegionsActive;
+      const toggleButton = document.getElementById('toggleAffectedRegions');
+      
+      if (affectedRegionsActive) {
+        console.log("Activating affected regions view with regions:", affectedRegions);
+        toggleButton.classList.add('active');
+        toggleButton.textContent = 'Hide Affected Regions';
+        highlightAffectedRegions();
+        document.body.classList.add('affected-regions-active');
+      } else {
+        console.log("Deactivating affected regions view");
+        toggleButton.classList.remove('active');
+        toggleButton.textContent = 'Affected Regions';
+        resetAffectedRegionsHighlight();
+        document.body.classList.remove('affected-regions-active');
+      }
+    }
+    
+    // Function to highlight affected regions in the 3D model
+    function highlightAffectedRegions() {
+      console.log("Highlighting affected regions:", affectedRegions);
+      
+      // First get a reference to the brain model parts
+      const brainModel = scene.getObjectByName("brain_model");
+      if (!brainModel) {
+        console.error("Brain model not found");
+        return;
+      }
+      
+      // If no affected regions defined, give user feedback
+      if (!affectedRegions || affectedRegions.length === 0) {
+        console.warn("No affected regions to highlight");
+        showBanner("No affected regions determined for this tumor");
+        return;
+      }
+      
+      // Clear any existing highlights
+      resetAffectedRegionsHighlight();
+      
+      // Remove existing region tooltips
+      document.querySelectorAll('.region-tooltip').forEach(el => el.remove());
+      
+      // Highlight each affected region
+      affectedRegions.forEach((region, index) => {
+        // Find corresponding brain parts in the model
+        brainModel.traverse(child => {
+          if (child.isMesh && region.modelParts.includes(child.name)) {
+            // Store original material properties
+            if (!child.userData.originalMaterial) {
+              child.userData.originalMaterial = child.material.clone();
+            }
+            
+            // Create new material for highlighting
+            const highlightMaterial = child.material.clone();
+            
+            // Apply highlighting based on severity
+            if (region.severity === 'high') {
+              highlightMaterial.emissive.set(0xff0000); // Red emissive
+              highlightMaterial.emissiveIntensity = 0.7;
+              highlightMaterial.color.set(0xff5555); // Reddish base color
+            } else if (region.severity === 'medium') {
+              highlightMaterial.emissive.set(0xff6600); // Orange emissive
+              highlightMaterial.emissiveIntensity = 0.5;
+              highlightMaterial.color.set(0xff9955); // Orangish base color
+            } else {
+              highlightMaterial.emissive.set(0xffcc00); // Yellow emissive
+              highlightMaterial.emissiveIntensity = 0.3;
+              highlightMaterial.color.set(0xffdd55); // Yellowish base color
+            }
+            
+            // Apply new material
+            child.material = highlightMaterial;
+            
+            // Add to highlighted parts
+            affectedRegionHighlights[child.uuid] = {
+              mesh: child,
+              originalMaterial: child.userData.originalMaterial
+            };
+            
+            // Create pulsing animation
+            gsap.to(child.material, {
+              emissiveIntensity: region.severity === 'high' ? 1 : (region.severity === 'medium' ? 0.8 : 0.6),
+              duration: region.severity === 'high' ? 0.8 : (region.severity === 'medium' ? 1.2 : 1.5),
+              repeat: -1,
+              yoyo: true,
+              ease: "sine.inOut"
+            });
+            
+            // Create tooltip for this region
+            createRegionTooltip(region, child, index);
+          }
+        });
+      });
+      
+      // Explode the brain if not already exploded to better see affected regions
+      if (explodeFactor < 0.5 && !window.animatingExplosion) {
+        window.animatingExplosion = true;
+        gsap.to(window, {
+          explodeFactor: 0.8, // Not fully exploded but enough to see inside
+          duration: 1.2,
+          ease: "power2.out",
+          onComplete: () => {
+            window.animatingExplosion = false;
+          }
+        });
+      }
+      
+      // Add banner notification
+      showBanner('Affected Regions Highlighted - Rotate to view all impacts');
+    }
+    
+    // Function to create a tooltip for an affected region
+    function createRegionTooltip(region, mesh, index) {
+      // Create tooltip container
+      const tooltip = document.createElement('div');
+      tooltip.id = `region-tooltip-${index}`;
+      tooltip.className = `region-tooltip ${region.severity}`;
+      tooltip.style.opacity = '0';
+      
+      // Add region name and description
+      tooltip.innerHTML = `
+        <h4>${region.name}</h4>
+        <p>${region.description}</p>
+        <div class="function-impact">Impact: ${getFunctionalImpactText(region)}</div>
+      `;
+      
+      document.body.appendChild(tooltip);
+      
+      // Position tooltip next to brain part
+      positionTooltip(tooltip, mesh);
+      
+      // Add to global list for updating during animation
+      if (!window.regionTooltips) window.regionTooltips = [];
+      window.regionTooltips.push({
+        element: tooltip,
+        mesh: mesh,
+        region: region
+      });
+      
+      // Fade in tooltip
+      gsap.to(tooltip, {
+        opacity: 1,
+        duration: 0.5,
+        delay: index * 0.2
+      });
+    }
+    
+    // Get appropriate functional impact text based on region and severity
+    function getFunctionalImpactText(region) {
+      const impacts = {
+        "Frontal Lobe": {
+          high: "Severe disruption of executive functions, motor control, personality",
+          medium: "Moderate impact on decision making, planning ability",
+          low: "Mild effect on concentration and social behavior"
+        },
+        "Temporal Lobe": {
+          high: "Severe language impairment, memory loss, hearing issues",
+          medium: "Moderate memory problems, speech comprehension difficulties", 
+          low: "Mild auditory processing issues"
+        },
+        "Parietal Lobe": {
+          high: "Severe sensory processing deficits, spatial disorientation",
+          medium: "Moderate issues with tactile sensation, spatial awareness",
+          low: "Mild numbness or spatial confusion"
+        },
+        "Occipital Lobe": {
+          high: "Severe visual field cuts, blindness in affected areas",
+          medium: "Moderate visual distortions, difficulty recognizing objects",
+          low: "Mild visual processing issues"
+        },
+        "Cerebellum": {
+          high: "Severe balance problems, coordination loss, ataxia",
+          medium: "Moderate coordination problems, tremors, uneven gait",
+          low: "Mild fine motor control issues"
+        },
+        "Brain Stem": {
+          high: "Critical impact on vital functions, cranial nerve dysfunction",
+          medium: "Significant effects on consciousness, breathing control",
+          low: "Moderate dysfunction of autonomic systems"
+        },
+        "Corpus Callosum": {
+          high: "Severe disruption of interhemispheric communication",
+          medium: "Moderate disconnection syndrome symptoms",
+          low: "Mild integration issues between hemispheres"
+        },
+        "Pituitary": {
+          high: "Severe hormonal dysregulation, visual field cuts",
+          medium: "Moderate hormone imbalances, possible vision impacts", 
+          low: "Mild endocrine dysfunction"
+        },
+        "Meninges": {
+          high: "Severe pressure on adjacent brain tissue",
+          medium: "Moderate compression effects on nearby structures",
+          low: "Mild pressure symptoms"
+        }
+      };
+      
+      // Try to match by region name first
+      for (const [key, value] of Object.entries(impacts)) {
+        if (region.name.includes(key)) {
+          return value[region.severity] || `${region.severity} impact on function`;
+        }
+      }
+      
+      // Default impacts if no specific region match
+      const defaultImpacts = {
+        high: "Severe disruption of neural function",
+        medium: "Moderate impact on brain function",
+        low: "Mild effects on neurological function"
+      };
+      
+      return defaultImpacts[region.severity] || `${region.severity} impact on function`;
+    }
+    
+    // Position tooltip next to brain part
+    function positionTooltip(tooltip, mesh) {
+      // Get mesh position in world space
+      const position = new THREE.Vector3();
+      position.setFromMatrixPosition(mesh.matrixWorld);
+      
+      // Project to screen space
+      const vector = position.clone();
+      vector.project(camera);
+      
+      // Convert to screen coordinates
+      const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+      
+      // Position tooltip
+      tooltip.style.left = `${x + 20}px`;
+      tooltip.style.top = `${y}px`;
+      
+      // Ensure tooltip stays in viewport
+      const rect = tooltip.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        tooltip.style.left = `${x - rect.width - 20}px`;
+      }
+      if (rect.bottom > window.innerHeight) {
+        tooltip.style.top = `${y - rect.height}px`;
+      }
+    }
+    
+    // Function to reset highlights
+    function resetAffectedRegionsHighlight() {
+      // Reset highlighting on all previously highlighted meshes
+      Object.values(affectedRegionHighlights).forEach(highlight => {
+        if (highlight.mesh && highlight.originalMaterial) {
+          // Kill any ongoing animations
+          gsap.killTweensOf(highlight.mesh.material);
+          
+          // Restore original material
+          highlight.mesh.material = highlight.originalMaterial;
+        }
+      });
+      
+      // Clear highlighted parts
+      affectedRegionHighlights = {};
+      
+      // Remove region tooltips
+      if (window.regionTooltips) {
+        window.regionTooltips.forEach(tooltip => {
+          gsap.to(tooltip.element, {
+            opacity: 0,
+            duration: 0.3,
+            onComplete: () => {
+              if (tooltip.element.parentNode) {
+                tooltip.element.parentNode.removeChild(tooltip.element);
+              }
+            }
+          });
+        });
+        window.regionTooltips = [];
+      }
+    }
+    
+    // Function to update region tooltips position during animation
+    function updateRegionTooltips() {
+      if (!window.regionTooltips || !window.regionTooltips.length) return;
+      
+      window.regionTooltips.forEach(tooltip => {
+        if (tooltip.mesh && tooltip.element) {
+          positionTooltip(tooltip.element, tooltip.mesh);
+        }
+      });
+    }
+    
+    // Update the animate function to update region tooltips
+    const originalAnimate = window.animate;
+    
+    if (originalAnimate) {
+      window.animate = function() {
+        originalAnimate();
+        if (affectedRegionsActive) {
+          updateRegionTooltips();
+        }
+      };
+    }
+    
+    // Show banner notification
+    function showBanner(message) {
+      // Remove existing banner
+      const existingBanner = document.getElementById('notification-banner');
+      if (existingBanner) existingBanner.remove();
+      
+      // Create banner
+      const banner = document.createElement('div');
+      banner.id = 'notification-banner';
+      banner.style.position = 'fixed';
+      banner.style.top = '110px';
+      banner.style.left = '50%';
+      banner.style.transform = 'translateX(-50%)';
+      banner.style.background = 'rgba(0,0,0,0.7)';
+      banner.style.color = 'white';
+      banner.style.padding = '10px 20px';
+      banner.style.borderRadius = '5px';
+      banner.style.zIndex = '2000';
+      banner.style.fontSize = '16px';
+      banner.style.fontWeight = 'bold';
+      banner.textContent = message;
+      
+      document.body.appendChild(banner);
+      
+      // Fade out after 4 seconds
+      gsap.to(banner, {
+        opacity: 0,
+        delay: 4,
+        duration: 1,
+        onComplete: () => banner.remove()
+      });
+    }
+
+    // Function to position functional highlights
+    function positionFunctionalHighlights() {
+      // Access the highlight elements
+      const motorHighlight = document.getElementById('motorHighlight');
+      const visualHighlight = document.getElementById('visualHighlight');
+      const languageHighlight = document.getElementById('languageHighlight');
+      const vesselHighlight = document.getElementById('vesselHighlight');
+      
+      // Position highlights based on brain model positioning
+      // These positions will need to be adjusted based on your specific brain model
+      if (motorHighlight) {
+        motorHighlight.style.left = '40%';
+        motorHighlight.style.top = '35%';
+      }
+      
+      if (visualHighlight) {
+        visualHighlight.style.left = '70%';
+        visualHighlight.style.top = '45%';
+      }
+      
+      if (languageHighlight) {
+        languageHighlight.style.left = '30%';
+        languageHighlight.style.top = '45%';
+      }
+      
+      if (vesselHighlight) {
+        vesselHighlight.style.left = '50%';
+        vesselHighlight.style.top = '55%';
+      }
+      
+      // Update based on current camera position
+      updateFunctionalHighlightsPosition();
+    }
+    
+    // Function to update functional highlights position during animation
+    function updateFunctionalHighlightsPosition() {
+      if (!document.body.classList.contains('functional-view-active')) return;
+      
+      // Update highlight positions based on camera and brain model position
+      // This would typically use similar positioning logic as the positionTooltip function
+      // but for simplicity we'll keep the fixed positions for now
+    }
+    
+    // Add this to the animate function to ensure highlights move with the model
+    const originalAnimateFunc = window.animate;
+    if (originalAnimateFunc) {
+      window.animate = function() {
+        originalAnimateFunc();
+        if (document.body.classList.contains('functional-view-active')) {
+          updateFunctionalHighlightsPosition();
+        }
+      };
+    }
+
+    // Add event listener for toggling anatomical view
+    document.addEventListener('DOMContentLoaded', function() {
+      const functionalToggleButton = document.getElementById('toggleFunctionalView');
+      const affectedRegionsToggleButton = document.getElementById('toggleAffectedRegions');
+      
+      if (functionalToggleButton) {
+        functionalToggleButton.addEventListener('click', function() {
+          // Toggle functional view class on body
+          document.body.classList.toggle('functional-view-active');
+          
+          // Update button text
+      if (document.body.classList.contains('functional-view-active')) {
+            this.textContent = 'Standard View';
+            this.classList.add('active');
+            // Position highlights based on critical structure locations
+        positionFunctionalHighlights();
+          } else {
+            this.textContent = 'Functional View';
+            this.classList.remove('active');
+          }
+          
+          // Deactivate affected regions if active
+          if (affectedRegionsActive) {
+            toggleAffectedRegionsView();
+          }
+        });
+      }
+      
+      if (affectedRegionsToggleButton) {
+        affectedRegionsToggleButton.addEventListener('click', function() {
+          toggleAffectedRegionsView();
+          
+          // Deactivate functional view if active
+          if (document.body.classList.contains('functional-view-active')) {
+            document.body.classList.remove('functional-view-active');
+            functionalToggleButton.textContent = 'Functional View';
+            functionalToggleButton.classList.remove('active');
+          }
+        });
+      }
+      
+      // Add keyboard shortcuts
+      document.addEventListener('keydown', function(event) {
+        // 'S' key toggles anatomical panel
+        if (event.key.toLowerCase() === 's') {
+          const panel = document.getElementById('anatomicalPanel');
+          panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // 'H' key toggles affected regions highlighting
+        if (event.key.toLowerCase() === 'h') {
+          if (affectedRegionsToggleButton) {
+            affectedRegionsToggleButton.click();
+          }
+        }
+        
+        // 'F' key toggles functional view
+        if (event.key.toLowerCase() === 'f') {
+          if (functionalToggleButton) {
+            functionalToggleButton.click();
+          }
+        }
+      });
+      
+      // Make anatomical panel draggable
+      makeDraggable(document.getElementById('anatomicalPanel'));
+      
+      // Initialize the panel controls
+      const urlParams = new URLSearchParams(window.location.search);
+      const tumorType = urlParams.get('tumor_type') || 'Unknown';
+      
+      // Add a note about keyboard shortcuts
+      const shortcutsHint = document.createElement('div');
+      shortcutsHint.style.position = 'fixed';
+      shortcutsHint.style.bottom = '20px';
+      shortcutsHint.style.left = '20px';
+      shortcutsHint.style.background = 'rgba(0,0,0,0.7)';
+      shortcutsHint.style.color = 'white';
+      shortcutsHint.style.padding = '10px';
+      shortcutsHint.style.borderRadius = '5px';
+      shortcutsHint.style.fontSize = '12px';
+      shortcutsHint.style.zIndex = '1000';
+      shortcutsHint.innerHTML = `
+        <strong>Keyboard Shortcuts:</strong><br>
+        H: Toggle affected regions<br>
+        F: Toggle functional view<br>
+        S: Show/hide anatomical panel<br>
+        Space: Toggle explosion<br>
+        R: Reset view
+      `;
+      document.body.appendChild(shortcutsHint);
+      
+      // Set a timeout to display the panel after 2 seconds
+      setTimeout(() => {
+        const panel = document.getElementById('anatomicalPanel');
+        if (panel) panel.style.display = 'block';
+        
+        // Show a notification about the affected regions feature
+        showBanner(`Press 'H' or click 'Affected Regions' to see tumor impact`);
+      }, 2000);
+    });
+
+    // Update loading animation
+    function updateLoadingProgress(percent) {
+      document.getElementById('loadingBar').style.width = percent + '%';
+      document.getElementById('loadingPercent').textContent = Math.round(percent) + '%';
+      
+      if (percent >= 100) {
+        setTimeout(() => {
+          document.getElementById('loadingScreen').style.opacity = '0';
+          setTimeout(() => {
+            document.getElementById('loadingScreen').style.display = 'none';
+          }, 500);
+        }, 300);
+      }
+    }
+
+    // Find this section that handles positioning the tumor cube
+    function positionTumorCube(coordinates, tumorType) {
+        // Parse the coordinates into 3D points
+        const points = parseCoordinates(coordinates);
+        if (!points || points.length === 0) {
+            console.error("Failed to parse coordinates:", coordinates);
+            return;
+        }
+        
+        // Calculate tumor center from the coordinates
+        const center = calculateCenter(points);
+        
+        // Check if coordinates are already in anatomical space
+        // If all coordinates are outside the 0-1 range, they're likely already in anatomical space
+        const isAnatomicalSpace = points.some(p => 
+            Math.abs(p[0]) > 2 || Math.abs(p[1]) > 2 || Math.abs(p[2]) > 2
+        );
+        
+        console.log("Coordinates already in anatomical space:", isAnatomicalSpace);
+        console.log("Tumor center:", center);
+        
+        // Define anatomical mapping transformations for the 3D model
+        // These transforms map our coordinate system to the actual brain model
+        const modelTransform = {
+            // Adjust X coordinates (left-right)
+            x: function(x) {
+                // If already in anatomical space, use directly
+                if (isAnatomicalSpace) return x;
+                
+                // Otherwise convert from normalized coordinates to model space
+                return (x - 0.5) * 4.5;  // Scale 3x and center horizontally (1.5 * 3)
+            },
+            
+            // Adjust Y coordinates (bottom-top)
+            y: function(y) {
+                // If already in anatomical space, use directly
+                if (isAnatomicalSpace) return y;
+                
+                // Otherwise convert from normalized coordinates
+                return (y - 0.45) * 5.4;  // Scale 3x and shift vertical position (1.8 * 3)
+            },
+            
+            // Adjust Z coordinates (posterior-anterior / back-front)
+            z: function(z) {
+                // If already in anatomical space, use directly
+                if (isAnatomicalSpace) return z;
+                
+                // Otherwise convert from normalized coordinates
+                return (z - 0.5) * 4.5;  // Scale 3x and center depth (1.5 * 3)
+            },
+            
+            // Anatomical region-specific adjustments
+            adjustForRegion: function(x, y, z, tumorType) {
+                // Apply tumor-specific adjustments for accurate placement
+                let adjustedX = this.x(x);
+                let adjustedY = this.y(y);
+                let adjustedZ = this.z(z);
+                
+                if (tumorType && tumorType.toLowerCase().includes('pituitary')) {
+                    // Pituitary is at the base of the brain, centered, and forward
+                    adjustedY = -3.0;  // Lower in the brain (3x scaling)
+                    adjustedZ = 0.9;   // More forward (3x scaling)
+                    adjustedX *= 0.7;  // Keep more centered horizontally (proportion stays the same)
+                }
+                else if (tumorType && tumorType.toLowerCase().includes('glioma')) {
+                    // Gliomas can be throughout cerebral hemispheres - slight scaling
+                    adjustedX *= 1.2;  // Exaggerate left-right position (proportion stays the same)
+                    adjustedY *= 1.1;  // Slightly exaggerate vertical position (proportion stays the same)
+                }
+                else if (tumorType && tumorType.toLowerCase().includes('meningioma')) {
+                    // Meningiomas are peripheral, make them more surface-located
+                    // Push more toward the edge of the brain
+                    if (adjustedX > 0) adjustedX += 0.6;  // 3x scaling
+                    if (adjustedX < 0) adjustedX -= 0.6;  // 3x scaling
+                    if (adjustedY > 0) adjustedY += 0.6;  // 3x scaling
+                    if (adjustedY < 0) adjustedY -= 0.6;  // 3x scaling
+                    if (adjustedZ > 0) adjustedZ += 0.6;  // 3x scaling
+                    if (adjustedZ < 0) adjustedZ -= 0.6;  // 3x scaling
+                }
+                
+                return { x: adjustedX, y: adjustedY, z: adjustedZ };
+            }
+        };
+        
+        // Apply the anatomical transformations to position the tumor correctly
+        const transformedPosition = modelTransform.adjustForRegion(
+            center.x, center.y, center.z, tumorType
+        );
+
+        // Apply the transformed position to the tumor mesh
+        tumorCube.position.set(
+            transformedPosition.x,
+            transformedPosition.y, 
+            transformedPosition.z
+        );
+        
+        // Scale the tumor based on the points' extents
+        const size = calculateSize(points);
+        const MAX_TUMOR_SIZE = 3.0;  // Maximum size for visualization (3x scaling)
+        const MIN_TUMOR_SIZE = 0.6;  // Minimum size for visualization (3x scaling)
+        
+        // Adjust tumor size based on type for biological accuracy
+        let sizeMultiplier = 1.0;
+        if (tumorType && tumorType.toLowerCase().includes('pituitary')) {
+            sizeMultiplier = 0.7;  // Pituitary tumors are typically smaller
+        }
+        else if (tumorType && tumorType.toLowerCase().includes('meningioma')) {
+            sizeMultiplier = 1.1;  // Meningiomas can be larger and more defined
+        }
+        
+        // Apply size constraints and set the tumor scale
+        tumorCube.scale.set(
+            Math.min(MAX_TUMOR_SIZE, Math.max(MIN_TUMOR_SIZE, size.x * 9 * sizeMultiplier)),  // 3x the previous multiplier
+            Math.min(MAX_TUMOR_SIZE, Math.max(MIN_TUMOR_SIZE, size.y * 9 * sizeMultiplier)),  // 3x the previous multiplier
+            Math.min(MAX_TUMOR_SIZE, Math.max(MIN_TUMOR_SIZE, size.z * 9 * sizeMultiplier))   // 3x the previous multiplier
+        );
+        
+        // Display tumor information overlay
+        displayTumorInfo(center, transformedPosition, tumorType);
+        
+        // Highlight the anatomical region affected
+        highlightAffectedRegion(transformedPosition, tumorType);
+        
+        // Return the transformed position for other functions
+        return transformedPosition;
+    }
+
+    // Update the display tumor info function to show the region mapping information
+    function displayTumorInfo(originalCenter, transformedPosition, tumorType) {
+        const infoElem = document.getElementById('tumorInfo') || createTumorInfoPanel();
+        
+        if (!infoElem) return;
+        
+        infoElem.innerHTML = `
+            <div class="info-title">Tumor Details</div>
+            <div class="info-row">
+                <span class="info-label">Type:</span> 
+                <span class="info-value">${tumorType || 'Unknown'}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Center:</span>
+                <span class="info-value">
+                    X: ${originalCenter.x.toFixed(3)}<br>
+                    Y: ${originalCenter.y.toFixed(3)}<br>
+                    Z: ${originalCenter.z.toFixed(3)}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Mapped Position:</span>
+                <span class="info-value">
+                    X: ${transformedPosition.x.toFixed(3)}<br>
+                    Y: ${transformedPosition.y.toFixed(3)}<br>
+                    Z: ${transformedPosition.z.toFixed(3)}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Brain Region:</span>
+                <span class="info-value">${determineBrainRegion(transformedPosition, tumorType)}</span>
+            </div>
+        `;
+        
+        infoElem.style.display = 'block';
+    }
+
+    // Function to determine brain region based on transformed position
+    function determineBrainRegion(position, tumorType) {
+        // Use tumor type for specific regions
+        if (tumorType && tumorType.toLowerCase().includes('pituitary')) {
+            return "Pituitary Fossa";
+        }
+        
+        // Determine region based on position
+        const { x, y, z } = position;
+        
+        // Front brain regions (anterior)
+        if (z > 0.2) {
+            if (y > 0.3) return "Frontal Lobe";
+            if (y < -0.5) return "Orbital Frontal / Olfactory";
+            return "Anterior Temporal Lobe";
+        }
+        
+        // Back brain regions (posterior)
+        if (z < -0.3) {
+            if (y > 0) return "Occipital Lobe";
+            if (y < -0.7) return "Cerebellum";
+            return "Posterior Temporal Lobe";
+        }
+        
+        // Middle brain regions
+        if (Math.abs(x) > 0.6) {
+            if (y > 0) return `${x > 0 ? 'Right' : 'Left'} Parietal Lobe`;
+            return `${x > 0 ? 'Right' : 'Left'} Temporal Lobe`;
+        }
+        
+        // Central brain regions
+        if (y < -0.7) return "Brain Stem";
+        if (y < -0.3) return "Thalamus / Hypothalamus";
+        if (Math.abs(x) < 0.3 && y > 0.3) return "Superior Frontal Gyrus";
+        
+        return "Deep Brain Structures";
+    }
+
+    // Add these helper functions before the positionTumorCube function
+
+    // Parse the coordinates from the URL parameter
+    function parseCoordinates(coordinates) {
+        try {
+            if (typeof coordinates === 'string') {
+                return JSON.parse(coordinates);
+            }
+            return coordinates;
+        } catch (e) {
+            console.error("Error parsing coordinates:", e);
+            return null;
+        }
+    }
+
+    // Calculate the center point of the tumor from its vertices
+    function calculateCenter(points) {
+        if (!points || points.length === 0) return { x: 0, y: 0, z: 0 };
+        
+        let sumX = 0, sumY = 0, sumZ = 0;
+        for (let i = 0; i < points.length; i++) {
+            sumX += points[i][0];
+            sumY += points[i][1];
+            sumZ += points[i][2];
+        }
+        
+        return {
+            x: sumX / points.length,
+            y: sumY / points.length,
+            z: sumZ / points.length
+        };
+    }
+
+    // Calculate the size of the tumor from its vertices
+    function calculateSize(points) {
+        if (!points || points.length < 2) return { x: 0.3, y: 0.3, z: 0.3 }; // Default size
+        
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        
+        for (let i = 0; i < points.length; i++) {
+            minX = Math.min(minX, points[i][0]);
+            minY = Math.min(minY, points[i][1]);
+            minZ = Math.min(minZ, points[i][2]);
+            
+            maxX = Math.max(maxX, points[i][0]);
+            maxY = Math.max(maxY, points[i][1]);
+            maxZ = Math.max(maxZ, points[i][2]);
+        }
+        
+        return {
+            x: maxX - minX,
+            y: maxY - minY,
+            z: maxZ - minZ
+        };
+    }
+
+    // Create an information panel for tumor details
+    function createTumorInfoPanel() {
+        const infoPanel = document.createElement('div');
+        infoPanel.id = 'tumorInfo';
+        infoPanel.className = 'tumor-info-panel';
+        infoPanel.style.cssText = `
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            max-width: 300px;
+            z-index: 1000;
+        `;
+        document.body.appendChild(infoPanel);
+        return infoPanel;
+    }
+
+    // Highlight the brain region affected by the tumor
+    function highlightAffectedRegion(position, tumorType) {
+        // This function would ideally highlight the affected region in the 3D model
+        // For now, it's a placeholder for future enhancement
+        console.log("Affected region:", determineBrainRegion(position, tumorType));
+    }
+
+    // Create the tumor visualization cube
+    function createTumorCube(tumorType) {
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        
+        // Set color based on tumor type
+        let color = 0xff0000; // Default red
+        let opacity = 0.7;
+        
+        if (tumorType) {
+            if (tumorType.toLowerCase().includes('glioma')) {
+                color = 0xff5500; // Orange-red for gliomas
+            }
+            else if (tumorType.toLowerCase().includes('meningioma')) {
+                color = 0x00aaff; // Blue for meningiomas
+            }
+            else if (tumorType.toLowerCase().includes('pituitary')) {
+                color = 0xffaa00; // Yellow-orange for pituitary
+            }
+        }
+        
+        const material = new THREE.MeshLambertMaterial({
+            color: color,
+            transparent: true,
+            opacity: opacity,
+            depthTest: true,
+            side: THREE.DoubleSide
+        });
+        
+        const cube = new THREE.Mesh(geometry, material);
+        
+        // Add wireframe to better visualize the tumor boundaries
+        const wireGeometry = new THREE.EdgesGeometry(geometry);
+        const wireMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            linewidth: 1
+        });
+        const wireframe = new THREE.LineSegments(wireGeometry, wireMaterial);
+        cube.add(wireframe);
+        
+        return cube;
+    }
+
+    // Find where the document.addEventListener('DOMContentLoaded', function() { code starts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const tumorCoordinates = urlParams.get('coordinates');
+        const tumorType = urlParams.get('tumor_type');
+        const brainRegion = urlParams.get('brain_region');
+        const impactData = urlParams.get('impact_data');
+        
+        // Initialize brain visualization
+        initBrainVisualization(tumorCoordinates, tumorType, brainRegion, impactData);
+    });
+
+    // Update the initialization function
+    function initBrainVisualization(coordinates, tumorType, brainRegion, impactData) {
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a192f); // Dark blue background
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('brain-container').appendChild(renderer.domElement);
+        
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        // Create the brain model
+        const loader = new THREE.GLTFLoader();
+        let brain = null;
+        
+        loader.load('/static/brain.glb', function(gltf) {
+            brain = gltf.scene;
+            
+            // Make brain partially transparent
+            brain.traverse(function(child) {
+                if (child.isMesh) {
+                    child.material.transparent = true;
+                    child.material.opacity = 0.6;
+                    child.material.side = THREE.DoubleSide;
+                }
+            });
+            
+            scene.add(brain);
+            
+            // Add tumor cube if coordinates are provided
+            if (coordinates) {
+                // Create anatomically accurate tumor
+                const position = createAnatomicallyAccurateTumor(coordinates, tumorType, brainRegion, impactData);
+                
+                // Update panel with the correct anatomical information
+                const actualRegion = determineRegionFromPosition(position, tumorType);
+                updateAnatomicalPanelForPosition(position, tumorType, actualRegion);
+                
+                // Determine affected regions for highlighting
+                if (typeof determineAffectedRegions === 'function') {
+                    determineAffectedRegions(tumorType, actualRegion, position);
+                }
+            }
+        });
+        
+        // Add orbit controls for user interaction
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    }
+
+    // Display impact data in the UI
+    function displayImpactData(impact, position) {
+        const impactPanel = document.createElement('div');
+        impactPanel.className = 'impact-panel';
+        impactPanel.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            max-width: 300px;
+            z-index: 1000;
+        `;
+        
+        let impactContent = `
+            <h3>Clinical Impact</h3>
+            <p><strong>Severity:</strong> ${impact.impact_severity || 'Unknown'}</p>
+        `;
+        
+        if (impact.affected_functions && impact.affected_functions.length > 0) {
+            impactContent += `<p><strong>Affected Functions:</strong></p><ul>`;
+            impact.affected_functions.forEach(func => {
+                impactContent += `<li>${func}</li>`;
+            });
+            impactContent += `</ul>`;
+        }
+        
+        if (impact.potential_symptoms && impact.potential_symptoms.length > 0) {
+            impactContent += `<p><strong>Potential Symptoms:</strong></p><ul>`;
+            impact.potential_symptoms.forEach(symptom => {
+                impactContent += `<li>${symptom}</li>`;
+            });
+            impactContent += `</ul>`;
+        }
+        
+        impactPanel.innerHTML = impactContent;
+        document.body.appendChild(impactPanel);
+    }
+
+    // Find the createAnatomicallyAccurateTumor function and replace it with this version:
+    function createAnatomicallyAccurateTumor(coordinates, tumorType, brainRegion, impactData) {
+        // Create tumor mesh with appropriate color and size
+        tumorCube = createTumorCube(tumorType);
+        scene.add(tumorCube);
+        
+        console.log("Creating tumor of type:", tumorType);
+        console.log("Original coordinates:", coordinates);
+        
+        // Use brain coordinates defined earlier
+        // These coordinates are the centers of each brain part
+        
+        // DIRECT POSITIONING - Override coordinates based on tumor type
+        // Using the actual coordinates from the Blender model
+        let position = { x: 0, y: 0, z: 0 };
+        let tumorSize = 1.0; // Default size
+        
+        if (tumorType.toLowerCase().includes('pituitary')) {
+            // Position in pituitary location with slight offset for visibility
+            position = {
+                x: brainCoordinates.pituitary.x,
+                y: brainCoordinates.pituitary.y,
+                z: brainCoordinates.pituitary.z
+            };
+            // Make absolutely sure we get the right position
+            console.log("PITUITARY COORDINATES:", brainCoordinates.pituitary);
+            tumorSize = 2.0; // Make pituitary tumors larger for visibility
+            console.log("Using pituitary positioning with exact coordinates");
+        }
+        else if (tumorType.toLowerCase().includes('glioma')) {
+            // Gliomas can be in different locations, typically in cerebral hemispheres
+            // Randomly choose between frontal, parietal, and temporal lobes
+            const gliomaParts = ['frontal', 'parietal', 'temporal'];
+            const selectedPart = gliomaParts[Math.floor(Math.random() * gliomaParts.length)];
+            
+            position = {
+                x: brainCoordinates[selectedPart].x + (Math.random() * 2 - 1), // Small random offset
+                y: brainCoordinates[selectedPart].y, 
+                z: brainCoordinates[selectedPart].z + (Math.random() * 2 - 1)  // Small random offset
+            };
+            tumorSize = 1.8; // Gliomas can be larger
+            console.log(`Using glioma positioning in ${selectedPart} lobe`);
+        }
+        else if (tumorType.toLowerCase().includes('meningioma')) {
+            // Meningiomas develop on the surface of the brain
+            // Use a position between two brain parts for a surface location
+            const surfacePosition = {
+                x: (brainCoordinates.frontal.x + brainCoordinates.parietal.x) / 2,
+                y: brainCoordinates.frontal.y - 0.5, // Slightly lower
+                z: (brainCoordinates.frontal.z + brainCoordinates.parietal.z) / 2
+            };
+            
+            position = surfacePosition;
+            tumorSize = 1.5; // Surface tumors
+            console.log("Using meningioma positioning on brain surface");
+        }
+        else {
+            // Default using randomly selected brain part
+            const allParts = Object.keys(brainCoordinates);
+            const randomPart = allParts[Math.floor(Math.random() * allParts.length)];
+            position = brainCoordinates[randomPart];
+            console.log(`Using default positioning in ${randomPart}`);
+        }
+        
+        // Log what we're doing
+        console.log("Setting tumor position to:", position);
+        console.log("Setting tumor size to:", tumorSize);
+        
+        // Set tumor position directly - no transformation
+        tumorCube.position.set(position.x, position.y, position.z);
+        
+        // Set tumor size - scales uniformly in all dimensions
+        tumorCube.scale.set(tumorSize, tumorSize, tumorSize);
+        
+        // Create a label to show tumor details
+        createTumorInfoLabel(tumorType, position, determineRegionFromPosition(position, tumorType));
+        
+        // Return the position for other functions
+        return position;
+    }
+
+    // Add a new function to determine brain region from 3D position
+    function determineRegionFromPosition(position, tumorType) {
+        // Access global brain part coordinates
+        
+        // For tumor type specific naming
+        if (tumorType.toLowerCase().includes('pituitary')) {
+            return "Pituitary Fossa (Sella Turcica)";
+        }
+        
+        if (tumorType.toLowerCase().includes('meningioma')) {
+            // For meningiomas, determine region based on nearest brain surface
+            // Calculate distances to each part
+            const distances = {};
+            for (const [part, coords] of Object.entries(brainCoordinates)) {
+                distances[part] = Math.sqrt(
+                    Math.pow(position.x - coords.x, 2) + 
+                    Math.pow(position.y - coords.y, 2) + 
+                    Math.pow(position.z - coords.z, 2)
+                );
+            }
+            
+            // Find the closest parts (first and second)
+            const sortedParts = Object.keys(distances).sort((a, b) => distances[a] - distances[b]);
+            const closestPart = sortedParts[0];
+            const secondPart = sortedParts[1];
+            
+            return `Meningioma near ${closestPart.charAt(0).toUpperCase() + closestPart.slice(1)}-${secondPart.charAt(0).toUpperCase() + secondPart.slice(1)} Junction`;
+        }
+        
+        // For other tumor types, find the closest brain part
+        let closestPart = "unknown";
+        let minDistance = Infinity;
+        
+        for (const [part, coords] of Object.entries(brainCoordinates)) {
+            const distance = Math.sqrt(
+                Math.pow(position.x - coords.x, 2) + 
+                Math.pow(position.y - coords.y, 2) + 
+                Math.pow(position.z - coords.z, 2)
+            );
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestPart = part;
+            }
+        }
+        
+        // Format the closest part name
+        let regionName = closestPart.charAt(0).toUpperCase() + closestPart.slice(1);
+        
+        // Add side information (Left/Right) based on x-coordinate for certain parts
+        if (['frontal', 'parietal', 'temporal', 'occipital'].includes(closestPart)) {
+            // Determine left/right based on the sign of x-coordinate
+            // In brain model coordinate system: negative X is typically right hemisphere in radiological view
+            const side = position.x < 0 ? "Right " : "Left ";
+            regionName = side + regionName;
+        }
+        
+        // Add appropriate suffix
+        if (['frontal', 'parietal', 'temporal', 'occipital'].includes(closestPart)) {
+            regionName += " Lobe";
+        } else if (closestPart === 'cerebellum') {
+            // No change needed
+        } else if (closestPart === 'brainStem') {
+            regionName = "Brain Stem";
+        } else if (closestPart === 'corpus') {
+            regionName = "Corpus Callosum";
+        }
+        
+        return regionName;
+    }
+
+    // Updated tumor info label function with precise brain coordinates
+    function createTumorInfoLabel(tumorType, position, brainRegion) {
+        const coordinateLabel = document.createElement('div');
+        coordinateLabel.id = 'tumor-coords';
+        coordinateLabel.style.position = 'absolute';
+        coordinateLabel.style.bottom = '60px';
+        coordinateLabel.style.right = '20px';
+        coordinateLabel.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        coordinateLabel.style.color = 'white';
+        coordinateLabel.style.padding = '10px';
+        coordinateLabel.style.borderRadius = '5px';
+        coordinateLabel.style.fontFamily = 'monospace';
+        coordinateLabel.style.zIndex = '900';
+        coordinateLabel.style.maxWidth = '350px';
+        
+        // Access brain part coordinates
+        
+        // Calculate distances to each brain part
+        const distances = {};
+        for (const [part, coords] of Object.entries(brainCoordinates)) {
+            distances[part] = Math.sqrt(
+                Math.pow(position.x - coords.x, 2) + 
+                Math.pow(position.y - coords.y, 2) + 
+                Math.pow(position.z - coords.z, 2)
+            );
+        }
+        
+        // Sort brain parts by distance to tumor
+        const sortedParts = Object.keys(distances).sort((a, b) => distances[a] - distances[b]);
+        
+        // Add more anatomical information
+        let anatomicalInfo = "Unknown";
+        if (tumorType.toLowerCase().includes('pituitary')) {
+            anatomicalInfo = "Base of skull, near pituitary gland";
+        } else if (tumorType.toLowerCase().includes('meningioma')) {
+            anatomicalInfo = "Surface of brain, attached to meninges";
+        } else if (tumorType.toLowerCase().includes('glioma')) {
+            anatomicalInfo = "Within brain tissue, infiltrative pattern";
+        }
+        
+        let proximityInfo = "";
+        if (sortedParts.length >= 3) {
+            proximityInfo = `
+                <strong>Nearest Brain Structures:</strong><br>
+                1. ${sortedParts[0].charAt(0).toUpperCase() + sortedParts[0].slice(1)} (${distances[sortedParts[0]].toFixed(2)}m)<br>
+                2. ${sortedParts[1].charAt(0).toUpperCase() + sortedParts[1].slice(1)} (${distances[sortedParts[1]].toFixed(2)}m)<br>
+                3. ${sortedParts[2].charAt(0).toUpperCase() + sortedParts[2].slice(1)} (${distances[sortedParts[2]].toFixed(2)}m)
+            `;
+        }
+        
+        coordinateLabel.innerHTML = `
+            <strong>Tumor Type:</strong> ${tumorType}<br>
+            <strong>Brain Region:</strong> ${brainRegion}<br>
+            <strong>Anatomical Location:</strong> ${anatomicalInfo}<br><br>
+            <strong>3D Position:</strong><br>
+            X: ${position.x.toFixed(2)}<br>
+            Y: ${position.y.toFixed(2)}<br>
+            Z: ${position.z.toFixed(2)}<br><br>
+            ${proximityInfo}
+        `;
+        
+        document.body.appendChild(coordinateLabel);
+    }
+  </script>
+
+  <!-- Add this function to the end of the file, before the closing </script> tag -->
+  function updateAnatomicalPanel(tumorType, position, brainRegion, impactData) {
+      // Get the anatomical panel element
+      const panel = document.getElementById('anatomicalPanel');
+      if (!panel) return;
+      
+      // Get the anatomical position
+      const anatomicalPosition = getAnatomicalPosition(position);
+      
+      // Determine the actual brain region based on 3D position
+      const actualRegion = determineBrainRegion(position, tumorType);
+      
+      // Update the tumor region text
+      const tumorRegionElement = document.getElementById('tumorRegion');
+      if (tumorRegionElement) {
+          tumorRegionElement.innerHTML = `Region: <strong>${actualRegion}</strong>`;
+      }
+      
+      // Update the tumor type label
+      const tumorTypeLabel = document.getElementById('tumorTypeLabel');
+      if (tumorTypeLabel) {
+          tumorTypeLabel.innerText = `${tumorType.charAt(0).toUpperCase() + tumorType.slice(1)} - ${anatomicalPosition.x} ${anatomicalPosition.y} ${anatomicalPosition.z}`;
+      }
+      
+      // Prepare impact data
+      let severityText, functionalImpact, symptoms, longTermImpact;
+      
+      // Parse impact data if available or generate based on tumor type and region
+      if (impactData && Object.keys(impactData).length > 0) {
+          try {
+              if (typeof impactData === 'string') {
+                  impactData = JSON.parse(impactData);
+              }
+              
+              severityText = impactData.impact_severity || 'medium';
+              
+              // Create functional impact description
+              if (impactData.affected_functions && impactData.affected_functions.length > 0) {
+                  functionalImpact = `This ${tumorType} in the ${actualRegion} may affect ${impactData.affected_functions.join(', ')}. `;
+              } else {
+                  functionalImpact = `This ${tumorType} in the ${actualRegion} requires further assessment. `;
+              }
+              
+              // Add proximity risks
+              if (impactData.proximity_risks && impactData.proximity_risks.length > 0) {
+                  functionalImpact += `Additional risks include: ${impactData.proximity_risks.join(', ')}.`;
+              }
+              
+              // Use provided symptoms
+              symptoms = impactData.potential_symptoms || [];
+          } catch (e) {
+              console.error("Error parsing impact data:", e);
+          }
+      }
+      
+      // If data not available or parsing failed, generate based on type and location
+      if (!functionalImpact) {
+          // Default impacts based on tumor type and location
+          severityText = tumorType.toLowerCase().includes('glioma') ? 'high' : 
+                      (tumorType.toLowerCase().includes('meningioma') ? 'medium' : 'low');
+          
+          // Generate functional impact based on location
+          functionalImpact = generateFunctionalImpact(tumorType, actualRegion, anatomicalPosition);
+          
+          // Generate symptoms based on location
+          symptoms = generateSymptoms(tumorType, actualRegion, anatomicalPosition);
+      }
+      
+      // Update the impact severity summary
+      const impactSummaryElement = document.getElementById('impactSummary');
+      if (impactSummaryElement) {
+          let impactClass = 'medium-impact';
+          if (severityText === 'high') impactClass = 'high-impact';
+          if (severityText === 'low') impactClass = 'low-impact';
+          
+          impactSummaryElement.innerHTML = `<span class="${impactClass}">${severityText.charAt(0).toUpperCase() + severityText.slice(1)} Impact</span>`;
+      }
+      
+      // Update functional impact description
+      const functionalImpactElement = document.getElementById('functionalImpact');
+      if (functionalImpactElement) {
+          functionalImpactElement.textContent = functionalImpact;
+      }
+      
+      // Update symptoms list
+      const symptomsListElement = document.getElementById('symptomsList');
+      if (symptomsListElement) {
+          symptomsListElement.innerHTML = '';
+          if (symptoms && symptoms.length > 0) {
+              symptoms.forEach(symptom => {
+                  const li = document.createElement('li');
+                  li.textContent = symptom;
+                  symptomsListElement.appendChild(li);
+              });
+          } else {
+              const li = document.createElement('li');
+              li.textContent = "No specific symptoms identified";
+              symptomsListElement.appendChild(li);
+          }
+      }
+      
+      // Update long-term impact
+      const longTermImpactElement = document.getElementById('longTermImpact');
+      if (longTermImpactElement) {
+          longTermImpactElement.textContent = generateLongTermImpact(tumorType, actualRegion, severityText);
+      }
+      
+      // Display the panel
+      panel.style.display = 'block';
+      
+      // Determine affected regions for highlighting
+      determineAffectedRegions(tumorType, actualRegion, position);
+  }
+
+  // Generate functional impact text based on tumor location
+  function generateFunctionalImpact(tumorType, region, position) {
+      if (tumorType.toLowerCase().includes('pituitary')) {
+          return "This pituitary tumor may affect hormone regulation and potentially impact nearby optic pathways if it grows upward.";
+      }
+      
+      if (tumorType.toLowerCase().includes('meningioma')) {
+          return `This meningioma in the ${region} is likely causing pressure on adjacent brain tissue. Meningiomas typically do not infiltrate brain tissue but can cause significant compression effects.`;
+      }
+      
+      if (tumorType.toLowerCase().includes('glioma')) {
+          if (region.includes("Frontal")) {
+              return "This glioma in the frontal lobe may infiltrate surrounding tissue, potentially affecting executive functions, personality, and motor control in the opposite side of the body.";
+          }
+          if (region.includes("Temporal")) {
+              return `This glioma in the ${position.x} temporal lobe may affect memory, language processing${position.x === 'Left' ? ' (dominant hemisphere)' : ''}, and auditory function.`;
+          }
+          if (region.includes("Parietal")) {
+              return "This glioma in the parietal lobe may affect sensory processing, spatial awareness, and could disrupt integration of sensory information.";
+          }
+          if (region.includes("Occipital")) {
+              return "This glioma in the occipital lobe may disrupt visual processing pathways, potentially causing visual field defects or other visual disturbances.";
+          }
+          if (region.includes("Cerebellum")) {
+              return "This glioma in the cerebellum may affect coordination, balance, and fine motor control.";
+          }
+          if (region.includes("Brain Stem")) {
+              return "This glioma in the brain stem is in a critical location near vital functions including respiration, heart rate, and consciousness. Treatment planning requires special consideration.";
+          }
+          
+          return `This glioma in the ${region} may infiltrate surrounding tissue and disrupt normal brain function in this area.`;
+      }
+      
+      // Generic case
+      return `This tumor in the ${region} may affect normal function of this brain area.`;
+  }
+
+  // Generate symptoms based on tumor location
+  function generateSymptoms(tumorType, region, position) {
+      const symptoms = [];
+      
+      // Add tumor-type specific symptoms
+      if (tumorType.toLowerCase().includes('pituitary')) {
+          symptoms.push("Hormonal imbalances", "Possible visual field defects", "Headaches", "Fatigue");
+      }
+      else if (tumorType.toLowerCase().includes('meningioma')) {
+          symptoms.push("Headaches", "Seizures", "Focal neurological deficits depending on location");
+      }
+      else if (tumorType.toLowerCase().includes('glioma')) {
+          symptoms.push("Headaches", "Seizures", "Progressive neurological deficits");
+      }
+      
+      // Add location-specific symptoms
+      if (region.includes("Frontal")) {
+          symptoms.push("Changes in personality or behavior", "Difficulty with planning and decision-making", 
+                        "Weakness or paralysis on opposite side of body");
+      }
+      else if (region.includes("Temporal")) {
+          if (position.x === 'Left') {
+              symptoms.push("Language comprehension difficulties", "Memory problems", "Hearing disturbances");
+          } else {
+              symptoms.push("Non-verbal memory problems", "Emotional changes", "Hearing disturbances");
+          }
+      }
+      else if (region.includes("Parietal")) {
+          symptoms.push("Sensory deficits", "Problems with spatial awareness", "Difficulty with reading or writing");
+      }
+      else if (region.includes("Occipital")) {
+          symptoms.push("Visual field defects", "Visual distortions", "Problems with reading");
+      }
+      else if (region.includes("Cerebellum")) {
+          symptoms.push("Poor balance and coordination", "Unsteady gait", "Slurred speech");
+      }
+      else if (region.includes("Brain Stem")) {
+          symptoms.push("Cranial nerve deficits", "Problems with basic functions like breathing or heart rate", 
+                        "Sensory or motor deficits affecting wide areas of the body");
+      }
+      
+      return symptoms;
+  }
+
+  // Generate long-term impact text
+  function generateLongTermImpact(tumorType, region, severity) {
+      if (tumorType.toLowerCase().includes('pituitary')) {
+          return "Long-term hormone replacement therapy may be needed. Visual effects usually improve after treatment if optic chiasm was compressed.";
+      }
+      
+      if (tumorType.toLowerCase().includes('meningioma')) {
+          if (severity === 'high') {
+              return "After treatment, neurological recovery depends on the degree of preoperative deficits. Many meningiomas are curable with complete surgical resection.";
+          } else {
+              return "Prognosis is generally favorable. Complete surgical resection typically results in cure, though long-term monitoring is recommended.";
+          }
+      }
+      
+      if (tumorType.toLowerCase().includes('glioma')) {
+          if (severity === 'high') {
+              return "Long-term outcomes vary significantly based on glioma subtype, grade, and genetic markers. Ongoing treatment and monitoring will likely be needed.";
+          } else {
+              return "Lower grade gliomas may have better prognosis but still require close monitoring for progression. Functional outcomes depend on tumor location and treatment approach.";
+          }
+      }
+      
+      if (region.includes("Brain Stem")) {
+          return "Tumors in this critical location present significant treatment challenges. Long-term management focuses on preserving vital functions.";
+      }
+      
+      // Generic
+      if (severity === 'high') {
+          return "Significant rehabilitation may be needed. Potential for permanent deficits depending on tumor type, location and treatment effectiveness.";
+      } else if (severity === 'medium') {
+          return "Moderate rehabilitation may be required. Good potential for recovery with appropriate intervention.";
+      } else {
+          return "Good prognosis for functional recovery. Minimal long-term impact expected with appropriate treatment.";
+      }
+  }
+
+  // Add this update handler for the anatomical panel info
+  function updateAnatomicalPanelForPosition(position, tumorType, brainRegion) {
+      // Get the anatomical panel element
+      const panel = document.getElementById('anatomicalPanel');
+      if (!panel) return;
+      
+      // Update the tumor region text
+      const tumorRegionElement = document.getElementById('tumorRegion');
+      if (tumorRegionElement) {
+          tumorRegionElement.innerHTML = `Region: <strong>${brainRegion}</strong>`;
+      }
+      
+      // Update the tumor type label
+      const tumorTypeLabel = document.getElementById('tumorTypeLabel');
+      if (tumorTypeLabel) {
+          const locationDesc = `${position.x < -0.3 ? 'Left' : (position.x > 0.3 ? 'Right' : 'Midline')} ${position.y < -0.3 ? 'Inferior' : (position.y > 0.3 ? 'Superior' : 'Middle')}`;
+          tumorTypeLabel.innerText = `${tumorType.charAt(0).toUpperCase() + tumorType.slice(1)} - ${locationDesc}`;
+      }
+      
+      // Generate tumor impact information based on type and region
+      let functionalImpact = "";
+      let symptoms = [];
+      let longTermText = "";
+      
+      // Customize impact based on tumor type and region
+      if (tumorType.toLowerCase().includes('pituitary')) {
+          functionalImpact = "This pituitary tumor may affect hormone regulation and potentially impact nearby optic pathways if it grows upward.";
+          symptoms = ["Hormonal imbalances", "Possible visual field defects", "Headaches", "Fatigue"];
+          longTermText = "Long-term hormone replacement therapy may be needed. Visual effects usually improve after treatment if optic chiasm was compressed.";
+      }
+      else if (tumorType.toLowerCase().includes('meningioma')) {
+          functionalImpact = `This meningioma in the ${brainRegion} is likely causing pressure on adjacent brain tissue. Meningiomas typically do not infiltrate brain tissue but can cause significant compression effects.`;
+          symptoms = ["Headaches", "Seizures", "Focal neurological deficits depending on location"];
+          longTermText = "Prognosis is generally favorable. Complete surgical resection typically results in cure, though long-term monitoring is recommended.";
+      }
+      else if (tumorType.toLowerCase().includes('glioma')) {
+          if (brainRegion.includes("Frontal")) {
+              functionalImpact = "This glioma in the frontal lobe may infiltrate surrounding tissue, potentially affecting executive functions, personality, and motor control in the opposite side of the body.";
+              symptoms = ["Changes in personality or behavior", "Difficulty with planning and decision-making", "Weakness or paralysis on opposite side of body"];
+          }
+          else if (brainRegion.includes("Temporal")) {
+              functionalImpact = `This glioma in the ${brainRegion} may affect memory, language processing, and auditory function.`;
+              symptoms = ["Memory problems", "Hearing disturbances", "Seizures"];
+              
+              if (position.x < 0) {  // Left side
+                  symptoms.push("Language comprehension difficulties (dominant hemisphere)");
+              } else {
+                  symptoms.push("Non-verbal memory problems");
+              }
+          }
+          else if (brainRegion.includes("Parietal")) {
+              functionalImpact = "This glioma in the parietal lobe may affect sensory processing, spatial awareness, and could disrupt integration of sensory information.";
+              symptoms = ["Sensory deficits", "Problems with spatial awareness", "Difficulty with reading or writing"];
+          }
+          else if (brainRegion.includes("Occipital")) {
+              functionalImpact = "This glioma in the occipital lobe may disrupt visual processing pathways, potentially causing visual field defects or other visual disturbances.";
+              symptoms = ["Visual field defects", "Visual distortions", "Problems with reading"];
+          }
+          else {
+              functionalImpact = `This glioma in the ${brainRegion} may infiltrate surrounding tissue and disrupt normal brain function in this area.`;
+              symptoms = ["Headaches", "Seizures", "Progressive neurological deficits"];
+          }
+          
+          longTermText = "Long-term outcomes vary significantly based on glioma subtype, grade, and genetic markers. Ongoing treatment and monitoring will likely be needed.";
+      }
+      
+      // Update UI elements
+      const impactSummaryElement = document.getElementById('impactSummary');
+      if (impactSummaryElement) {
+          let severity = tumorType.toLowerCase().includes('glioma') ? 'high-impact' : 
+                        (tumorType.toLowerCase().includes('meningioma') ? 'medium-impact' : 'low-impact');
+          
+          if (brainRegion.includes("Brain Stem")) severity = 'high-impact';
+          
+          impactSummaryElement.innerHTML = `<span class="${severity}">${severity.split('-')[0].charAt(0).toUpperCase() + severity.split('-')[0].slice(1)} Impact</span>`;
+      }
+      
+      // Update functional impact description
+      const functionalImpactElement = document.getElementById('functionalImpact');
+      if (functionalImpactElement) {
+          functionalImpactElement.textContent = functionalImpact;
+      }
+      
+      // Update symptoms list
+      const symptomsListElement = document.getElementById('symptomsList');
+      if (symptomsListElement) {
+          symptomsListElement.innerHTML = '';
+          if (symptoms && symptoms.length > 0) {
+              symptoms.forEach(symptom => {
+                  const li = document.createElement('li');
+                  li.textContent = symptom;
+                  symptomsListElement.appendChild(li);
+              });
+          } else {
+              const li = document.createElement('li');
+              li.textContent = "No specific symptoms identified";
+              symptomsListElement.appendChild(li);
+          }
+      }
+      
+      // Update long-term impact
+      const longTermImpactElement = document.getElementById('longTermImpact');
+      if (longTermImpactElement) {
+          longTermImpactElement.textContent = longTermText;
+      }
+      
+      // Display the panel
+      panel.style.display = 'block';
+  }
+
+  // Update the loader.load function for the brain.glb model
+  loader.load('/static/brain.glb', function(gltf) {
+      brain = gltf.scene;
+      
+      // Make brain partially transparent
+      brain.traverse(function(child) {
+          if (child.isMesh) {
+              child.material.transparent = true;
+              child.material.opacity = 0.6;
+              child.material.side = THREE.DoubleSide;
+          }
+      });
+      
+      scene.add(brain);
+      
+      // Add tumor cube if coordinates are provided
+      if (coordinates) {
+          // Create anatomically accurate tumor
+          const position = createAnatomicallyAccurateTumor(coordinates, tumorType, brainRegion, impactData);
+          
+          // Update panel with the correct anatomical information
+          const actualRegion = determineRegionFromPosition(position, tumorType);
+          updateAnatomicalPanelForPosition(position, tumorType, actualRegion);
+          
+          // Determine affected regions for highlighting
+          if (typeof determineAffectedRegions === 'function') {
+              determineAffectedRegions(tumorType, actualRegion, position);
+          }
+      }
+  });
+</body>
+</html> 

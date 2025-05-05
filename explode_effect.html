@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Interactive Brain Model with Tumor Visualization</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #05c2c9;
+      --secondary: #0f4c81;
+      --accent: #36b5cd;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --error: #e74c3c;
+      --dark: #0d1b2a;
+      --dark-secondary: #1b263b;
+      --light: #f8f9fa;
+      --text-light: #ffffff;
+      --text-dark: #1b263b;
+      --panel-bg: rgba(27, 38, 59, 0.95);
+      --panel-border: rgba(5, 194, 201, 0.15);
+      --transition-speed: 0.3s;
+      --border-radius: 8px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--dark);
+      color: var(--text-light);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none; /* Prevents default touch behaviors for canvas */
+    }
+    
+    /* Top Navigation Bar */
+    .top-navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      background-color: var(--panel-bg);
+      padding: 12px 20px;
+      color: white;
+      z-index: 100;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow);
+      border-bottom: 1px solid var(--panel-border);
+    }
+    
+    .navbar-title {
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--primary);
+    }
+    
+    .nav-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .nav-btn {
+      padding: 8px 15px;
+      border-radius: var(--border-radius);
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      color: white;
+      transition: all var(--transition-speed) ease;
+      font-family: 'Poppins', sans-serif;
+      min-height: 44px; /* Improved touch target size */
+    }
+    
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .btn-green { background-color: var(--success); }
+    .btn-purple { background-color: var(--accent); }
+    .btn-blue { background-color: var(--secondary); }
+    
+    /* Information panel */
+    .info-panel {
+      position: fixed;
+      top: 60px;
+      right: 0;
+      width: 320px;
+      height: calc(100vh - 60px);
+      background-color: var(--panel-bg);
+      color: white;
+      z-index: 90;
+      padding: 20px;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      box-shadow: var(--shadow);
+      border-left: 1px solid var(--panel-border);
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    
+    .info-panel.visible {
+      transform: translateX(0);
+    }
+    
+    .panel-section {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    
+    .panel-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: var(--primary);
+    }
+    
+    .risk-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .risk-high { background-color: var(--error); }
+    .risk-medium { background-color: var(--warning); }
+    .risk-low { background-color: var(--success); }
+    
+    /* Controls panel */
+    .controls-panel {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      width: 280px;
+      background-color: var(--panel-bg);
+      color: white;
+      z-index: 90;
+      padding: 20px;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      box-shadow: var(--shadow);
+      border-right: 1px solid var(--panel-border);
+      overflow-y: auto;
+      height: calc(100vh - 60px);
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    
+    .controls-panel.visible {
+      transform: translateX(0);
+    }
+    
+    .controls-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: var(--primary);
+    }
+    
+    .shortcut-item {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    
+    .shortcut-key {
+      background-color: rgba(5, 194, 201, 0.2);
+      padding: 4px 8px;
+      border-radius: var(--border-radius);
+      margin-right: 12px;
+      font-family: 'Consolas', monospace;
+      min-width: 30px;
+      text-align: center;
+      color: var(--primary);
+      font-weight: 500;
+    }
+    
+    /* Toggle buttons for panels */
+    .panel-toggle {
+      position: fixed;
+      width: 45px;
+      height: 45px;
+      background-color: var(--panel-bg);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 95;
+      transition: all var(--transition-speed) ease;
+      border: 1px solid var(--panel-border);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+    }
+    
+    .panel-toggle:hover {
+      color: var(--accent);
+      background-color: rgba(27, 38, 59, 0.98);
+    }
+    
+    .toggle-controls {
+      top: 70px;
+      left: 15px;
+    }
+    
+    .toggle-info {
+      top: 70px;
+      right: 15px;
+    }
+    
+    /* Coordinates display */
+    .coordinates-display {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--panel-bg);
+      color: white;
+      padding: 12px 18px;
+      border-radius: var(--border-radius);
+      font-family: 'Consolas', monospace;
+      z-index: 80;
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+    }
+    
+    /* Mobile Touch Controls for 3D manipulation */
+    .touch-controls {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 90;
+      display: none; /* Hidden by default, shown only on touch devices */
+    }
+    
+    .touch-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--panel-bg);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      font-size: 18px;
+    }
+    
+    .touch-btn:active {
+      transform: scale(0.95);
+      background-color: rgba(5, 194, 201, 0.2);
+    }
+    
+    /* Forms and loaders */
+    .coordinate-form {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--panel-bg);
+      color: white;
+      padding: 30px;
+      border-radius: var(--border-radius);
+      width: 600px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--panel-border);
+      z-index: 1000;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .coordinate-inputs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    
+    .point-input {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+    
+    .point-input label {
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .point-input input {
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 5px;
+      width: 80px;
+      margin-right: 10px;
+      min-height: 40px; /* Improved touch target size */
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    
+    /* Remove spinner buttons from number inputs for better mobile UI */
+    .point-input input::-webkit-inner-spin-button,
+    .point-input input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      appearance: none;
+      margin: 0;
+    }
+    
+    .form-error {
+      color: #ff5252;
+      text-align: center;
+      margin: 15px 0;
+      min-height: 20px;
+    }
+    
+    .form-buttons {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 15px;
+    }
+    
+    .form-buttons button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease;
+      min-height: 44px;
+    }
+    
+    #createTumorBtn {
+      background: var(--success);
+      color: white;
+    }
+    
+    #useDefaultCoordinatesBtn {
+      background: var(--secondary);
+      color: white;
+    }
+    
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--primary);
+      background: var(--panel-bg);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 100;
+      text-align: center;
+    }
+    
+    #label {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel-bg);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 5px;
+      display: none;
+      pointer-events: none;
+      z-index: 100;
+    }
+    
+    #distanceIndicator {
+      position: fixed;
+      top: 70px;
+      left: 20px;
+      background: var(--panel-bg);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 80;
+    }
+    
+    #errorMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--error);
+      background: var(--panel-bg);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 80%;
+      display: none;
+      z-index: 100;
+      text-align: center;
+    }
+    
+    @media (max-width: 768px) {
+      .coordinate-inputs {
+        grid-template-columns: 1fr;
+      }
+      
+      .top-navbar {
+        flex-direction: column;
+        padding: 10px;
+      }
+      
+      .navbar-title {
+        margin-bottom: 10px;
+      }
+      
+      .nav-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      
+      /* Show touch controls on mobile */
+      .touch-controls {
+        display: flex;
+      }
+    }
+    
+    /* Enhanced responsive styles */
+    @media (max-width: 992px) {
+      .info-panel, .controls-panel {
+        width: 85%;
+        max-width: 300px;
+      }
+      
+      .info-panel.visible, .controls-panel.visible {
+        z-index: 110; /* Ensure panels appear above other elements */
+      }
+      
+      .panel-toggle {
+        width: 45px;
+        height: 45px;
+      }
+      
+      .coordinates-display {
+        width: 90%;
+        max-width: 280px;
+        font-size: 12px;
+      }
+      
+      #distanceIndicator {
+        left: 10px;
+        font-size: 12px;
+        padding: 5px 8px;
+      }
+      
+      /* Enlarged panel toggles for better touch targets */
+      .toggle-controls, .toggle-info {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+      }
+      
+      .toggle-controls {
+        top: 70px;
+        left: 10px;
+      }
+      
+      .toggle-info {
+        top: 70px;
+        right: 10px;
+      }
+    }
+    
+    @media (max-width: 576px) {
+      .top-navbar {
+        padding: 8px;
+      }
+      
+      .navbar-title {
+        font-size: 16px;
+      }
+      
+      .nav-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+        width: 100%;
+      }
+      
+      .nav-btn {
+        font-size: 11px;
+        padding: 6px 4px;
+        text-align: center;
+        min-height: 38px;
+      }
+      
+      .coordinate-form {
+        width: 95%;
+        padding: 15px;
+        max-height: 90vh;
+      }
+      
+      .point-input input {
+        width: 60px;
+        padding: 6px;
+        font-size: 12px;
+      }
+      
+      .point-input label {
+        font-size: 12px;
+      }
+      
+      .coordinates-display {
+        font-size: 11px;
+        padding: 8px 12px;
+        bottom: 15px;
+      }
+      
+      .panel-section {
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+      }
+      
+      .panel-title {
+        font-size: 14px;
+      }
+      
+      .form-buttons {
+        flex-direction: column;
+      }
+      
+      .form-buttons button {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      
+      /* Smaller touch controls for very small screens */
+      .touch-controls {
+        bottom: 60px;
+      }
+      
+      .touch-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+      }
+    }
+    
+    /* Additional mobile optimizations for very small screens */
+    @media (max-width: 375px) {
+      .navbar-title {
+        font-size: 14px;
+      }
+      
+      .nav-buttons {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .coordinates-display {
+        width: 95%;
+        font-size: 10px;
+        padding: 6px 10px;
+      }
+      
+      .panel-toggle {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+      }
+      
+      .shortcut-item {
+        font-size: 12px;
+      }
+      
+      .touch-controls {
+        bottom: 50px;
+      }
+      
+      .touch-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <div class="top-navbar">
+    <div class="navbar-title">Interactive Brain Model</div>
+    <div class="nav-buttons">
+      <button id="explode-btn" class="nav-btn btn-green">Explode Brain</button>
+      <button id="reform-btn" class="nav-btn btn-green">Reform Brain</button>
+      <button id="enhance-btn" class="nav-btn btn-purple">Enhance</button>
+      <button id="axis-btn" class="nav-btn btn-blue">Show Axis</button>
+      <button id="change-tumor-btn" class="nav-btn btn-green">Change Tumor</button>
+    </div>
+  </div>
+  
+  <!-- Toggles for side panels -->
+  <div class="panel-toggle toggle-controls" id="toggle-controls">
+    <i class="fas fa-cog"></i>
+  </div>
+  
+  <div class="panel-toggle toggle-info" id="toggle-info">
+    <i class="fas fa-info-circle"></i>
+  </div>
+  
+  <!-- Controls Panel -->
+  <div class="controls-panel" id="controls-panel">
+    <div class="controls-title">Control Options</div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Navigation Controls</div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">Space</span>
+        <span>Toggle explosion</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">Tab</span>
+        <span>Cycle through parts</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">A</span>
+        <span>Toggle tumor axis</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">+/-</span>
+        <span>Resize brain</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">R</span>
+        <span>Reset view</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">Dbl-Click</span>
+        <span>Focus on tumor</span>
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Visibility Controls</div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">S</span>
+        <span>Show/hide structures</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">H</span>
+        <span>Toggle affected regions</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">F</span>
+        <span>Toggle functional view</span>
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Mobile Touch Controls</div>
+      <p class="mb-2">Use pinch gestures to zoom in/out.</p>
+      <p class="mb-2">Drag with one finger to rotate the model.</p>
+      <p class="mb-2">Tap on brain parts to select them.</p>
+      <p class="mb-0">Use the on-screen buttons for special functions.</p>
+    </div>
+  </div>
+  
+  <!-- Information Panel -->
+  <div class="info-panel" id="info-panel">
+    <div class="panel-title">Anatomical Analysis</div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Region Information</div>
+      <p><strong>Region:</strong> <span id="brain-region">Deep Brain Structure</span></p>
+      <p><strong>Tumor Type:</strong> Infiltrative Pattern (Glioma)</p>
+    </div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Proximity Analysis</div>
+      <p><strong>Motor Pathways:</strong> <span class="risk-indicator risk-low"></span> Safe distance</p>
+      <p><strong>Visual Pathways:</strong> <span class="risk-indicator risk-low"></span> Safe distance</p>
+      <p><strong>Language Areas:</strong> <span class="risk-indicator risk-low"></span> Safe distance</p>
+      <p><strong>Major Blood Vessels:</strong> <span class="risk-indicator risk-high"></span> Close proximity</p>
+    </div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Impact Assessment</div>
+      <p><strong>Impact on Movement:</strong> High Risk</p>
+      <p><strong>Impact on Cognition:</strong> Medium Risk</p>
+      <p>This glioma in the Deep Brain Structure may affect Movement Control and Cognitive Functions.</p>
+    </div>
+    
+    <div class="panel-section">
+      <div class="panel-title">Potential Symptoms</div>
+      <ul style="padding-left: 20px; margin-bottom: 0;">
+        <li>Movement disorders</li>
+        <li>Sensory disturbances</li>
+        <li>Cognitive changes</li>
+        <li>Seizures</li>
+        <li>Headaches</li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Coordinates Display -->
+  <div class="coordinates-display" id="coordinates-display">
+    <div style="font-weight: bold; margin-bottom: 5px;">Tumor Coordinates</div>
+    <div>X: <span id="tumor-x">0.4</span> | Y: <span id="tumor-y">0.3</span> | Z: <span id="tumor-z">0.2</span></div>
+  </div>
+  
+  <!-- Mobile Touch Controls -->
+  <div class="touch-controls">
+    <div class="touch-btn" id="zoom-in-btn">
+      <i class="fas fa-plus"></i>
+    </div>
+    <div class="touch-btn" id="zoom-out-btn">
+      <i class="fas fa-minus"></i>
+    </div>
+    <div class="touch-btn" id="focus-btn">
+      <i class="fas fa-crosshairs"></i>
+    </div>
+    <div class="touch-btn" id="reset-btn">
+      <i class="fas fa-undo"></i>
+    </div>
+  </div>
+  
+  <!-- Distance Indicator -->
+  <div id="distanceIndicator">Distance: 30.00</div>
+  
+  <!-- Coordinate Form (Hidden by default) -->
+  <div id="tumorCoordinateForm" class="coordinate-form">
+    <h3>Enter Tumor Coordinates</h3>
+    <p>Enter 8 points (x,y,z) to define tumor bounding box</p>
+    <div class="coordinate-inputs">
+      <div class="point-input">
+        <label>Point 1:</label>
+        <input type="number" id="x1" step="0.01" placeholder="X" />
+        <input type="number" id="y1" step="0.01" placeholder="Y" />
+        <input type="number" id="z1" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 2:</label>
+        <input type="number" id="x2" step="0.01" placeholder="X" />
+        <input type="number" id="y2" step="0.01" placeholder="Y" />
+        <input type="number" id="z2" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 3:</label>
+        <input type="number" id="x3" step="0.01" placeholder="X" />
+        <input type="number" id="y3" step="0.01" placeholder="Y" />
+        <input type="number" id="z3" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 4:</label>
+        <input type="number" id="x4" step="0.01" placeholder="X" />
+        <input type="number" id="y4" step="0.01" placeholder="Y" />
+        <input type="number" id="z4" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 5:</label>
+        <input type="number" id="x5" step="0.01" placeholder="X" />
+        <input type="number" id="y5" step="0.01" placeholder="Y" />
+        <input type="number" id="z5" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 6:</label>
+        <input type="number" id="x6" step="0.01" placeholder="X" />
+        <input type="number" id="y6" step="0.01" placeholder="Y" />
+        <input type="number" id="z6" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 7:</label>
+        <input type="number" id="x7" step="0.01" placeholder="X" />
+        <input type="number" id="y7" step="0.01" placeholder="Y" />
+        <input type="number" id="z7" step="0.01" placeholder="Z" />
+      </div>
+      <div class="point-input">
+        <label>Point 8:</label>
+        <input type="number" id="x8" step="0.01" placeholder="X" />
+        <input type="number" id="y8" step="0.01" placeholder="Y" />
+        <input type="number" id="z8" step="0.01" placeholder="Z" />
+      </div>
+    </div>
+    <div class="form-error" id="coordinateError"></div>
+    <div class="form-buttons">
+      <button id="createTumorBtn">Create Tumor</button>
+      <button id="useDefaultCoordinatesBtn">Use Default Coordinates</button>
+    </div>
+  </div>
+
+  <!-- Helper elements -->
+  <div id="label">Brain Part</div>
+  <div class="loading">Loading brain model...</div>
+  <div id="errorMessage"></div>
+  <div id="loadingProgress"><div id="progressBar"></div></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.11.4/dist/gsap.min.js"></script>
+  <script src="./components/script.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if device is touch-enabled
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      // Toggle control panel
+      document.getElementById('toggle-controls').addEventListener('click', function() {
+        document.getElementById('controls-panel').classList.toggle('visible');
+      });
+      
+      // Toggle info panel
+      document.getElementById('toggle-info').addEventListener('click', function() {
+        document.getElementById('info-panel').classList.toggle('visible');
+      });
+      
+      // Connect UI buttons to functionality
+      document.getElementById('reform-btn').addEventListener('click', function() {
+        if (typeof resetView === 'function') {
+          resetView();
+        }
+      });
+      
+      document.getElementById('explode-btn').addEventListener('click', function() {
+        if (typeof toggleExplode === 'function') {
+          toggleExplode();
+        }
+      });
+      
+      document.getElementById('enhance-btn').addEventListener('click', function() {
+        if (typeof adjustModelMaterials === 'function') {
+          adjustModelMaterials();
+        }
+      });
+      
+      document.getElementById('axis-btn').addEventListener('click', function() {
+        if (typeof toggleTumorAxis === 'function') {
+          toggleTumorAxis();
+        }
+      });
+      
+      document.getElementById('change-tumor-btn').addEventListener('click', function() {
+        const form = document.getElementById('tumorCoordinateForm');
+        form.style.display = 'block';
+      });
+      
+      // Mobile touch controls
+      if (isTouchDevice) {
+        // Show touch controls for mobile devices
+        document.querySelector('.touch-controls').style.display = 'flex';
+        
+        // Connect touch buttons to functions
+        document.getElementById('zoom-in-btn').addEventListener('click', function() {
+          if (typeof zoomIn === 'function') {
+            zoomIn();
+          } else if (typeof camera !== 'undefined' && typeof controls !== 'undefined') {
+            // Fallback zoom function
+            camera.position.multiplyScalar(0.9);
+            controls.update();
+          }
+        });
+        
+        document.getElementById('zoom-out-btn').addEventListener('click', function() {
+          if (typeof zoomOut === 'function') {
+            zoomOut();
+          } else if (typeof camera !== 'undefined' && typeof controls !== 'undefined') {
+            // Fallback zoom function
+            camera.position.multiplyScalar(1.1);
+            controls.update();
+          }
+        });
+        
+        document.getElementById('focus-btn').addEventListener('click', function() {
+          if (typeof focusOnTumor === 'function') {
+            focusOnTumor();
+          }
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', function() {
+          if (typeof resetView === 'function') {
+            resetView();
+          }
+        });
+      }
+      
+      // Update coordinates in UI based on tumor position
+      function updateCoordinates() {
+        if (typeof tumorBoxCenter !== 'undefined') {
+          document.getElementById('tumor-x').textContent = tumorBoxCenter.x.toFixed(2);
+          document.getElementById('tumor-y').textContent = tumorBoxCenter.y.toFixed(2);
+          document.getElementById('tumor-z').textContent = tumorBoxCenter.z.toFixed(2);
+        }
+      }
+      
+      // Run initially and then set an interval
+      setTimeout(updateCoordinates, 1000);
+      setInterval(updateCoordinates, 3000);
+      
+      // Show panels by default on desktop, but not on mobile
+      if (window.innerWidth > 768) {
+        document.getElementById('controls-panel').classList.add('visible');
+        document.getElementById('info-panel').classList.add('visible');
+      }
+      
+      // Close panels when clicking outside on mobile
+      if (window.innerWidth <= 768) {
+        document.addEventListener('click', function(e) {
+          const controlsPanel = document.getElementById('controls-panel');
+          const infoPanel = document.getElementById('info-panel');
+          const controlsToggle = document.getElementById('toggle-controls');
+          const infoToggle = document.getElementById('toggle-info');
+          
+          if (controlsPanel.classList.contains('visible') && 
+              !controlsPanel.contains(e.target) && 
+              e.target !== controlsToggle) {
+            controlsPanel.classList.remove('visible');
+          }
+          
+          if (infoPanel.classList.contains('visible') && 
+              !infoPanel.contains(e.target) && 
+              e.target !== infoToggle) {
+            infoPanel.classList.remove('visible');
+          }
+        });
+      }
+      
+      // Optimize for mobile performance
+      if (window.innerWidth <= 576) {
+        // Simplified rendering for mobile if available
+        if (typeof setMobilePerformanceMode === 'function') {
+          setMobilePerformanceMode(true);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

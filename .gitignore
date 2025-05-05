@@ -1,0 +1,5 @@
+__pycache__/
+models/model.h5
+*.pyc
+**/brain_tumour_detection_using_deep_learning.ipynb
+instance/

@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0d1b2a">
+    <meta name="description" content="MRI Tumor Detection and 3D Brain Visualization System">
+    <title>MRI Tumor Detection System</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"
+    crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    crossorigin="anonymous">
+    <!-- Add html2pdf.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Add jsPDF for direct PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+      :root {
+        --primary: #05c2c9;
+        --secondary: #0f4c81;
+        --accent: #36b5cd;
+        --success: #2ecc71;
+        --warning: #f39c12;
+        --error: #e74c3c;
+        --dark: #0d1b2a;
+        --dark-secondary: #1b263b;
+        --light: #f8f9fa;
+        --text-light: #ffffff;
+        --text-dark: #1b263b;
+        --panel-bg: rgba(27, 38, 59, 0.9);
+        --panel-border: rgba(5, 194, 201, 0.15);
+        --transition-speed: 0.3s;
+        --border-radius: 8px;
+        --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      }
+
+      body {
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        background-color: var(--dark);
+        color: var(--text-light);
+        -webkit-tap-highlight-color: transparent;
+        overflow-x: hidden;
+        background: linear-gradient(135deg, var(--dark) 0%, var(--dark-secondary) 40%, var(--dark) 100%);
+        background-size: 200% 200%;
+        animation: gradientAnimation 15s ease infinite;
+        margin: 0;
+        min-height: 100vh;
+        position: relative;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding-top: 40px;
+        position: relative;
+        z-index: 10;
+      }
+      .card {
+        border-radius: var(--border-radius);
+        margin-bottom: 20px;
+        background-color: var(--dark-secondary);
+        border: 1px solid var(--panel-border);
+        box-shadow: var(--shadow);
+        color: var(--text-light);
+        overflow: hidden;
+        transform: translateY(20px);
+        opacity: 0;
+        animation: fadeInUp 0.8s ease forwards 0.6s;
+        backdrop-filter: blur(10px);
+      }
+      #results img {
+        max-height: 400px;
+        margin-top: 15px;
+        border-radius: var(--border-radius);
+      }
+      .text-center {
+        text-align: center;
+      }
+      .btn {
+        width: 100%;
+        transition: all var(--transition-speed) ease;
+        min-height: 44px; /* Better touch targets */
+        position: relative;
+        overflow: hidden;
+      }
+      
+      /* Improve form field touch targets */
+      input, select, textarea, .form-control {
+        min-height: 44px;
+      }
+      .lead {
+        margin-bottom: 30px;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .image-container {
+        text-align: center;
+      }
+      .visualize-btn {
+        margin-top: 15px;
+        background-color: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+      .visualize-btn:hover {
+        background-color: #2994a7;
+        border-color: #2994a7;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(54, 181, 205, 0.4);
+      }
+      .tumor-info {
+        background-color: rgba(15, 76, 129, 0.3);
+        border-left: 4px solid var(--primary);
+        padding: 15px;
+        margin-top: 15px;
+        border-radius: 0 var(--border-radius) var(--border-radius) 0;
+      }
+      .monitor-btn {
+        background-color: var(--success);
+        border-color: var(--success);
+        color: white;
+      }
+      .monitor-btn:hover {
+        background-color: #27ae60;
+        border-color: #27ae60;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+      }
+      .anatomical-info {
+        font-size: 14px;
+        margin-top: 10px;
+        background-color: rgba(27, 38, 59, 0.5);
+        padding: 10px;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--panel-border);
+      }
+      .risk-indicator {
+        display: inline-block;
+        height: 20px;
+        width: 20px;
+        border-radius: 50%;
+        margin-right: 10px;
+        vertical-align: middle;
+      }
+      .risk-low {
+        background-color: var(--success);
+      }
+      .risk-medium {
+        background-color: var(--warning);
+      }
+      .risk-high {
+        background-color: var(--error);
+      }
+      #treatmentModal .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      .chart-container {
+        height: 300px;
+        margin-bottom: 20px;
+      }
+      .text-primary {
+        color: var(--primary) !important;
+      }
+      .text-secondary {
+        color: rgba(255, 255, 255, 0.7) !important;
+      }
+      .text-success {
+        color: var(--success) !important;
+      }
+      .text-muted {
+        color: rgba(255, 255, 255, 0.6) !important;
+      }
+      .form-control {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--panel-border);
+        color: var(--text-light);
+      }
+      .form-control:focus {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: var(--primary);
+        color: var(--text-light);
+        box-shadow: 0 0 0 0.25rem rgba(5, 194, 201, 0.25);
+      }
+      .form-label {
+        color: var(--primary);
+        font-weight: 500;
+      }
+      .btn-primary {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        animation: pulse 2s infinite;
+      }
+      .btn-primary:hover {
+        background-color: #04a9b0;
+        border-color: #04a9b0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(5, 194, 201, 0.4);
+      }
+      .btn-primary::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, 
+            rgba(255, 255, 255, 0) 0%, 
+            rgba(255, 255, 255, 0.2) 50%, 
+            rgba(255, 255, 255, 0) 100%);
+        animation: shimmer 2s infinite;
+      }
+      .modal-content {
+        background-color: var(--dark-secondary);
+        color: var(--text-light);
+        border: 1px solid var(--panel-border);
+      }
+      .modal-header {
+        border-bottom: 1px solid rgba(5, 194, 201, 0.2);
+      }
+      .modal-footer {
+        border-top: 1px solid rgba(5, 194, 201, 0.2);
+      }
+      .progress {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      .card-title, .card-header {
+        color: var(--primary);
+      }
+      .table {
+        color: var(--text-light);
+      }
+      
+      /* Back to top button */
+      .back-to-top {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: var(--panel-bg);
+        color: var(--primary);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-size: 24px;
+        opacity: 0;
+        transition: all var(--transition-speed) ease;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--panel-border);
+        z-index: 1000;
+      }
+      
+      .back-to-top.visible {
+        opacity: 1;
+      }
+      
+      .back-to-top:hover {
+        background-color: var(--primary);
+        color: white;
+        transform: translateY(-5px);
+      }
+      
+      /* Fast loading images */
+      .lazy-load {
+        transition: opacity 0.3s;
+        opacity: 0;
+      }
+      
+      .lazy-loaded {
+        opacity: 1;
+      }
+      
+      /* Toast notifications for mobile */
+      .toast-container {
+        position: fixed;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1050;
+        pointer-events: none;
+      }
+      
+      .toast {
+        background-color: var(--panel-bg);
+        color: white;
+        padding: 12px 20px;
+        border-radius: var(--border-radius);
+        margin-bottom: 10px;
+        box-shadow: var(--shadow);
+        max-width: 90%;
+        border: 1px solid var(--panel-border);
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+        pointer-events: auto;
+      }
+      
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      
+      .toast.success {
+        border-left: 4px solid var(--success);
+      }
+      
+      .toast.error {
+        border-left: 4px solid var(--error);
+      }
+      
+      .toast.info {
+        border-left: 4px solid var(--primary);
+      }
+      
+      /* Enhanced responsive styles */
+      @media (max-width: 992px) {
+        .container {
+          width: 95%;
+          max-width: 95%;
+          padding: 0 10px;
+        }
+        
+        h1.display-4 {
+          font-size: 2.5rem;
+        }
+        
+        .lead {
+          font-size: 1rem;
+        }
+        
+        .card {
+          padding: 15px;
+        }
+        
+        .tumor-info {
+          padding: 12px;
+        }
+        
+        #results img {
+          max-height: 350px;
+        }
+        
+        /* Improved form touch targets */
+        input, select, textarea, button, .btn, .form-control {
+          font-size: 16px !important; /* Prevents iOS zoom on focus */
+        }
+        
+        /* Improve accordion touch targets */
+        .accordion-button {
+          min-height: 50px;
+          padding: 15px;
+        }
+      }
+      
+      @media (max-width: 768px) {
+        h1.display-4 {
+          font-size: 2rem;
+        }
+        
+        .row {
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        
+        .col-md-6 {
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+        
+        .chart-container {
+          height: 250px;
+        }
+        
+        #results img {
+          max-height: 300px;
+        }
+        
+        .panel-section p {
+          font-size: 14px;
+        }
+        
+        .modal-dialog {
+          max-width: 95%;
+          margin: 10px auto;
+        }
+        
+        /* Improved modal on mobile */
+        .modal-content {
+          border-radius: 15px;
+        }
+        
+        .modal-body {
+          padding-top: 10px;
+          padding-bottom: 10px;
+        }
+        
+        /* More touch-friendly tabs */
+        .nav-tabs .nav-link {
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+      
+      @media (max-width: 576px) {
+        .container {
+          padding: 0 8px;
+          margin-top: 15px;
+        }
+        
+        h1.display-4 {
+          font-size: 1.8rem;
+        }
+        
+        .lead {
+          font-size: 0.9rem;
+          margin-bottom: 20px;
+        }
+        
+        .card {
+          padding: 10px;
+          margin-bottom: 15px;
+        }
+        
+        .card-title {
+          font-size: 1.2rem;
+        }
+        
+        .tumor-info {
+          padding: 10px;
+          margin-top: 10px;
+        }
+        
+        .tumor-info h5 {
+          font-size: 1rem;
+        }
+        
+        .anatomical-info {
+          font-size: 12px;
+          padding: 8px;
+        }
+        
+        #results img {
+          max-height: 250px;
+        }
+        
+        .btn {
+          padding: 0.5rem 0.75rem;
+          font-size: 0.9rem;
+        }
+        
+        .chart-container {
+          height: 200px;
+        }
+        
+        .table {
+          font-size: 12px;
+        }
+        
+        .nav-tabs .nav-link {
+          padding: 0.4rem 0.6rem;
+          font-size: 14px;
+        }
+        
+        .back-to-top {
+          width: 40px;
+          height: 40px;
+          font-size: 18px;
+          right: 10px;
+          bottom: 10px;
+        }
+        
+        /* Enhanced form elements on mobile */
+        .form-control {
+          margin-bottom: 15px;
+        }
+        
+        /* Better spacing for accordion on mobile */
+        .accordion-item {
+          margin-bottom: 8px;
+        }
+        
+        .accordion-body {
+          padding: 12px 10px;
+        }
+        
+        /* Improved table responsiveness */
+        .table-responsive {
+          border-radius: var(--border-radius);
+          overflow: hidden;
+        }
+      }
+      
+      /* Very small mobile devices */
+      @media (max-width: 400px) {
+        h1.display-4 {
+          font-size: 1.6rem;
+        }
+        
+        .card-title {
+          font-size: 1.1rem;
+        }
+        
+        .lead {
+          font-size: 0.85rem;
+        }
+        
+        .nav-tabs .nav-link {
+          font-size: 12px;
+          padding: 0.3rem 0.5rem;
+        }
+        
+        #results img {
+          max-height: 200px;
+        }
+        
+        .chart-container {
+          height: 180px;
+        }
+      }
+
+      @keyframes gradientAnimation {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(5, 194, 201, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(5, 194, 201, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(5, 194, 201, 0); }
+      }
+      
+      @keyframes shimmer {
+        100% { left: 100%; }
+      }
+      
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      
+      @keyframes ripple {
+        to {
+          transform: scale(4);
+          opacity: 0;
+        }
+      }
+      
+      @keyframes scanning {
+        0% { top: 0; opacity: 0; }
+        5% { opacity: 1; }
+        95% { opacity: 1; }
+        100% { top: 100%; opacity: 0; }
+      }
+      
+      @keyframes progress-grow {
+        0% { width: 0%; opacity: 1; }
+        100% { width: 100%; opacity: 1; }
+      }
+      
+      /* Particles background */
+      #particles-js {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      
+      /* Apply animations to elements */
+      .display-4 {
+        opacity: 0;
+        transform: translateY(-20px);
+        animation: fadeInDown 0.8s ease forwards;
+      }
+      
+      .card {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.8s ease forwards 0.6s;
+      }
+      
+      /* Shimmer effect for buttons */
+      .btn-primary::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, 
+            rgba(255, 255, 255, 0) 0%, 
+            rgba(255, 255, 255, 0.2) 50%, 
+            rgba(255, 255, 255, 0) 100%);
+        animation: shimmer 2s infinite;
+      }
+      
+      /* Ripple effect */
+      .ripple {
+        position: absolute;
+        border-radius: 50%;
+        transform: scale(0);
+        animation: ripple 0.6s linear;
+        background-color: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+      }
+      
+      /* Brain icon animation */
+      .brain-icon {
+        display: block;
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        opacity: 0;
+        animation: fadeIn 1s ease forwards 0.5s, float 6s ease-in-out infinite;
+      }
+      
+      /* Scanning animation */
+      .scan-line {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, 
+            rgba(5, 194, 201, 0) 0%, 
+            rgba(5, 194, 201, 0.8) 50%, 
+            rgba(5, 194, 201, 0) 100%);
+        box-shadow: 0 0 10px rgba(5, 194, 201, 0.8);
+        z-index: 3;
+        animation: scanning 3s linear infinite;
+        pointer-events: none;
+      }
+      
+      /* Progress indicator animation */
+      .progress-animation {
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--accent));
+        width: 0%;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        border-radius: 0 2px 2px 0;
+        animation: progress-grow 2.5s ease-out forwards;
+        opacity: 0;
+      }
+      
+      /* Neural Network Animation */
+      .neural-network {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 2;
+      }
+      
+      .neural-node {
+        position: absolute;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+        opacity: 0.2;
+      }
+      
+      /* Caption animation */
+      .caption-animate {
+        opacity: 0;
+        animation: fadeIn 0.8s ease forwards 0.8s;
+      }
+    </style>
+    
+    <!-- Particle.js -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <!-- GSAP for advanced animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+  </head>
+
+  <body>
+    <!-- Particles JS background -->
+    <div id="particles-js"></div>
+    
+    <!-- Neural network background -->
+    <div class="neural-network" id="neural-network"></div>
+    
+    <!-- Scanning effect -->
+    <div class="scan-line"></div>
+
+    <div class="container mt-5">
+      <div class="text-center">
+        <!-- Brain icon -->
+        <svg class="brain-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C10.3431 2 9 3.34315 9 5C9 5.35064 9.06015 5.68722 9.17071 6C7.36907 6 6 7.36907 6 9C6 9.36729 6.06865 9.72029 6.18584 10.0479C4.93322 10.284 4 11.3589 4 12.618C4 13.2393 4.22429 13.812 4.59324 14.2571C3.63652 14.7659 3 15.7979 3 17C3 18.6569 4.34315 20 6 20H9C9 20.7956 9.31607 21.5587 9.87868 22.1213C10.4413 22.6839 11.2044 23 12 23C12.7956 23 13.5587 22.6839 14.1213 22.1213C14.6839 21.5587 15 20.7956 15 20H18C19.6569 20 21 18.6569 21 17C21 15.7979 20.3635 14.7659 19.4068 14.2571C19.7757 13.812 20 13.2393 20 12.618C20 11.3589 19.0668 10.284 17.8142 10.0479C17.9313 9.72029 18 9.36729 18 9C18 7.36907 16.6309 6 14.8293 6C14.9398 5.68722 15 5.35064 15 5C15 3.34315 13.6569 2 12 2Z" stroke="#05c2c9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        
+        <h1 class="display-4">MRI Tumor Detection</h1>
+        <h2 class="display-6">System</h2>
+        <p>Upload an MRI image to detect if there is a tumor and localize it.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <form action="/" method="post" enctype="multipart/form-data" id="upload-form">
+            <div class="mb-4">
+              <label for="file" class="form-label">Select MRI Image:</label>
+              <input
+                class="form-control"
+                type="file"
+                id="file"
+                name="file"
+                required
+              />
+            </div>
+            <button type="submit" class="btn btn-primary pulse" id="upload-btn">
+              Upload and Detect
+            </button>
+            <div class="progress-animation"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Result Display Section -->
+      {% if result %}
+      <div class="card result-card">
+        <div class="card-body">
+          <h5 class="card-title">Detection Results</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <img src="{{ localized_file_path }}" alt="Tumor Detection Result" class="img-fluid rounded">
+            </div>
+            <div class="col-md-6">
+              <div class="tumor-info">
+                <h5>{{ result }}</h5>
+                <p>Confidence: {{ confidence }}</p>
+                {% if brain_region %}
+                <p>Brain Region: {{ brain_region }}</p>
+                {% endif %}
+                {% if coordinates_3d != "None" %}
+                <div class="d-grid gap-2 mt-3">
+                  <a href="/visualize/{{ session_id }}" class="btn visualize-btn">
+                    <i class="fas fa-brain"></i> 3D Brain Visualization
+                  </a>
+                  
+                  <!-- Treatment options button -->
+                  <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#treatmentModal">
+                    <i class="fas fa-procedures"></i> View Treatment Options
+                  </button>
+                  
+                  <!-- Growth prediction button -->
+                  <button type="button" class="btn monitor-btn mt-2" data-bs-toggle="modal" data-bs-target="#growthModal">
+                    <i class="fas fa-chart-line"></i> Tumor Growth Timeline
+                  </button>
+                  
+                  <!-- Report generation button -->
+                  <button type="button" class="btn btn-info mt-2" id="generateReportBtn">
+                    <i class="fas fa-file-medical"></i> Generate Report
+                  </button>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Treatment Options Modal -->
+    {% if result and result != "Tumor Type: notumor" %}
+    <div class="modal fade" id="treatmentModal" tabindex="-1" aria-labelledby="treatmentModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="treatmentModalLabel">Treatment Options for {{ result }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-12">
+                <h6 class="text-primary"><i class="fas fa-heartbeat"></i> Recommended Treatment Approaches</h6>
+                <div class="treatment-options p-3 mb-3" style="border-left: 3px solid var(--primary); background: rgba(5, 194, 201, 0.1);">
+                  {% if 'glioma' in result|lower %}
+                    <p><strong>Surgery:</strong> Maximal safe resection is typically the first-line treatment</p>
+                    <p><strong>Radiation Therapy:</strong> Usually follows surgery to target remaining tumor cells</p>
+                    <p><strong>Chemotherapy:</strong> Temozolomide is the standard chemotherapy agent</p>
+                    <p><strong>Tumor Treating Fields:</strong> Novel approach using electrical fields to disrupt cell division</p>
+                  {% elif 'meningioma' in result|lower %}
+                    <p><strong>Surgery:</strong> Complete resection is often curative for grade I meningiomas</p>
+                    <p><strong>Radiation Therapy:</strong> May be used for incomplete resections or higher grade tumors</p>
+                    <p><strong>Observation:</strong> Small, asymptomatic meningiomas may be monitored without treatment</p>
+                  {% elif 'pituitary' in result|lower %}
+                    <p><strong>Surgery:</strong> Transsphenoidal approach is preferred for most pituitary adenomas</p>
+                    <p><strong>Medication:</strong> Prolactinomas often respond to dopamine agonists</p>
+                    <p><strong>Radiation Therapy:</strong> Option for incomplete resection or recurrence</p>
+                    <p><strong>Hormone Replacement:</strong> May be necessary after treatment</p>
+                  {% endif %}
+                </div>
+                
+                <h6 class="text-primary mt-4"><i class="fas fa-notes-medical"></i> Clinical Trials</h6>
+                <div class="clinical-trials p-3 mb-3" style="border-left: 3px solid var(--accent); background: rgba(54, 181, 205, 0.1);">
+                  <p>Several ongoing clinical trials may be relevant:</p>
+                  <ul>
+                    {% if 'glioma' in result|lower %}
+                      <li>Immunotherapy approaches (checkpoint inhibitors, vaccines)</li>
+                      <li>Targeted therapies for IDH-mutant gliomas</li>
+                      <li>Novel delivery methods for chemotherapy</li>
+                    {% elif 'meningioma' in result|lower %}
+                      <li>Targeted therapies (SMO/AKT inhibitors)</li>
+                      <li>Hormone therapy for progesterone-positive meningiomas</li>
+                    {% elif 'pituitary' in result|lower %}
+                      <li>Novel medical therapies for non-functioning adenomas</li>
+                      <li>Focused ultrasound approaches</li>
+                    {% endif %}
+                  </ul>
+                  <p class="mt-2"><a href="#" class="text-accent">Search for clinical trials <i class="fas fa-external-link-alt"></i></a></p>
+                </div>
+                
+                <h6 class="text-primary mt-4"><i class="fas fa-user-md"></i> Specialist Referral</h6>
+                <div class="specialist-info p-3" style="border-left: 3px solid var(--success); background: rgba(46, 204, 113, 0.1);">
+                  <p>Based on tumor characteristics, recommend consultation with:</p>
+                  <ul>
+                    <li>Neurosurgical oncologist</li>
+                    <li>Radiation oncologist</li>
+                    <li>Neuro-oncologist</li>
+                    {% if 'pituitary' in result|lower %}
+                      <li>Endocrinologist</li>
+                    {% endif %}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary">Save Recommendations</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    
+    <!-- Growth Timeline Modal -->
+    {% if result and result != "Tumor Type: notumor" %}
+    <div class="modal fade" id="growthModal" tabindex="-1" aria-labelledby="growthModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="growthModalLabel">Treatment Monitoring & Simulation</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-12">
+                <h6 class="text-primary mb-3">Tumor Volume Over Time</h6>
+                <p class="text-muted mb-3 text-center">Projected Tumor Volume (% of initial)</p>
+                
+                <div class="chart-container">
+                  <canvas id="treatmentComparisonChart"></canvas>
+                </div>
+                
+                <!-- Nav tabs -->
+                <ul class="nav nav-tabs mt-4" id="treatmentTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="treatment-tab" data-bs-toggle="tab" data-bs-target="#treatment-pane" type="button" role="tab" aria-controls="treatment-pane" aria-selected="true">Treatment Options</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="impact-tab" data-bs-toggle="tab" data-bs-target="#impact-pane" type="button" role="tab" aria-controls="impact-pane" aria-selected="false">Impact Assessment</button>
+                  </li>
+                </ul>
+                
+                <!-- Tab content -->
+                <div class="tab-content mt-3" id="treatmentTabContent">
+                  <!-- Treatment Options tab -->
+                  <div class="tab-pane fade show active" id="treatment-pane" role="tabpanel" aria-labelledby="treatment-tab">
+                    <div class="accordion" id="treatmentAccordion">
+                      <!-- Surgical Resection -->
+                      <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingSurgical">
+                          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSurgical" aria-expanded="true" aria-controls="collapseSurgical">
+                            Surgical Resection
+                          </button>
+                        </h2>
+                        <div id="collapseSurgical" class="accordion-collapse collapse show" aria-labelledby="headingSurgical" data-bs-parent="#treatmentAccordion">
+                          <div class="accordion-body">
+                            <div class="mb-3">
+                              <strong>Recommended Approach:</strong> 
+                              <span id="surgical-approach">
+                                {% if 'pituitary' in result|lower %}
+                                  Endoscopic transsphenoidal approach
+                                {% elif 'glioma' in result|lower %}
+                                  Craniotomy with intraoperative mapping
+                                {% elif 'meningioma' in result|lower %}
+                                  Craniotomy with complete resection
+                                {% else %}
+                                  To be determined based on final diagnosis
+                                {% endif %}
+                              </span>
+                            </div>
+                            <div>
+                              <strong>Expected Outcome:</strong> 
+                              <span id="surgical-outcome">
+                                {% if 'pituitary' in result|lower %}
+                                  Complete removal with hormone normalization possible
+                                {% elif 'glioma' in result|lower %}
+                                  Maximal safe resection, potential for incomplete removal
+                                {% elif 'meningioma' in result|lower %}
+                                  Complete removal possible in most cases
+                                {% else %}
+                                  Pending final diagnosis
+                                {% endif %}
+                              </span>
+                            </div>
+                            
+                            <div class="mt-4 text-center">
+                              <div class="approach-image">
+                                {% if 'pituitary' in result|lower %}
+                                  <div style="background-color: #eee; height: 150px; display: flex; align-items: center; justify-content: center; border-radius: 5px;">
+                                    <p>Brain Surgery Approach</p>
+                                  </div>
+                                {% elif 'glioma' in result|lower or 'meningioma' in result|lower %}
+                                  <div style="background-color: #eee; height: 150px; display: flex; align-items: center; justify-content: center; border-radius: 5px;">
+                                    <p>Brain Surgery Approach</p>
+                                  </div>
+                                {% endif %}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Radiation Therapy -->
+                      <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingRadiation">
+                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRadiation" aria-expanded="false" aria-controls="collapseRadiation">
+                            Radiation Therapy
+                          </button>
+                        </h2>
+                        <div id="collapseRadiation" class="accordion-collapse collapse" aria-labelledby="headingRadiation" data-bs-parent="#treatmentAccordion">
+                          <div class="accordion-body">
+                            <div class="mb-3">
+                              <strong>Recommended Approach:</strong> 
+                              <span id="radiation-approach">
+                                {% if 'pituitary' in result|lower %}
+                                  Stereotactic radiosurgery for residual or recurrent tumor
+                                {% elif 'glioma' in result|lower %}
+                                  Fractionated external beam radiation therapy
+                                {% elif 'meningioma' in result|lower %}
+                                  Stereotactic radiosurgery for incompletely resected tumors
+                                {% else %}
+                                  To be determined based on final diagnosis
+                                {% endif %}
+                              </span>
+                            </div>
+                            <div>
+                              <strong>Expected Outcome:</strong> 
+                              <span id="radiation-outcome">
+                                {% if 'pituitary' in result|lower %}
+                                  Tumor control rate >90% with hormone normalization in 40-60%
+                                {% elif 'glioma' in result|lower %}
+                                  Improved progression-free survival with moderately high recurrence risk
+                                {% elif 'meningioma' in result|lower %}
+                                  Long-term control rates >90% for grade I meningiomas
+                                {% else %}
+                                  Pending final diagnosis
+                                {% endif %}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Medical Therapy -->
+                      <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingMedical">
+                          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMedical" aria-expanded="false" aria-controls="collapseMedical">
+                            Medical Therapy
+                          </button>
+                        </h2>
+                        <div id="collapseMedical" class="accordion-collapse collapse" aria-labelledby="headingMedical" data-bs-parent="#treatmentAccordion">
+                          <div class="accordion-body">
+                            <div class="mb-3">
+                              <strong>Recommended Approach:</strong> 
+                              <span id="medical-approach">
+                                {% if 'pituitary' in result|lower %}
+                                  Dopamine agonists for prolactinomas, somatostatin analogs for acromegaly
+                                {% elif 'glioma' in result|lower %}
+                                  Temozolomide chemotherapy with potential targeted therapy
+                                {% elif 'meningioma' in result|lower %}
+                                  Observation for most cases, hormone therapy for refractory cases
+                                {% else %}
+                                  To be determined based on final diagnosis
+                                {% endif %}
+                              </span>
+                            </div>
+                            <div>
+                              <strong>Expected Outcome:</strong> 
+                              <span id="medical-outcome">
+                                {% if 'pituitary' in result|lower %}
+                                  Hormone normalization in 60-90% of prolactinomas, variable for other types
+                                {% elif 'glioma' in result|lower %}
+                                  Modest improvement in overall survival, variable response based on molecular profile
+                                {% elif 'meningioma' in result|lower %}
+                                  Limited efficacy of medical therapy, typically used for recurrent disease
+                                {% else %}
+                                  Pending final diagnosis
+                                {% endif %}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Impact Assessment tab -->
+                  <div class="tab-pane fade" id="impact-pane" role="tabpanel" aria-labelledby="impact-tab">
+                    <!-- Functional Impact Assessment -->
+                    <div class="row mb-4">
+                      <div class="col-md-12">
+                        <h6 class="text-primary mb-3">Functional Impact Assessment</h6>
+                        
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="card bg-dark mb-3">
+                              <div class="card-header">Primary Affected Region</div>
+                              <div class="card-body text-center">
+                                <div style="background-color: #eee; height: 150px; display: flex; align-items: center; justify-content: center; border-radius: 5px; margin-bottom: 10px;">
+                                  <p class="mb-0">Brain Region</p>
+                                </div>
+                                <p class="mb-0" id="primary-region-text">
+                                  {% if 'pituitary' in result|lower %}
+                                    Pituitary region and surrounding structures
+                                  {% elif 'glioma' in result|lower %}
+                                    {% if brain_region %}{{ brain_region }} and surrounding tissue{% else %}Cerebral tissue{% endif %}
+                                  {% elif 'meningioma' in result|lower %}
+                                    Meningeal tissue adjacent to {% if brain_region %}{{ brain_region }}{% else %}brain{% endif %}
+                                  {% endif %}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div class="col-md-6">
+                            <div class="card bg-dark mb-3">
+                              <div class="card-header">Location-based Impact</div>
+                              <div class="card-body">
+                                <div class="alert alert-success d-inline-block px-2 py-1 mb-2">Localized Impact</div>
+                                <p id="location-impact-text">
+                                  {% if 'pituitary' in result|lower %}
+                                    Pituitary tumors primarily affect hormone function and may compress adjacent structures.
+                                  {% elif 'glioma' in result|lower %}
+                                    Gliomas infiltrate brain tissue and can cause significant neurological deficits.
+                                  {% elif 'meningioma' in result|lower %}
+                                    Meningiomas typically compress rather than infiltrate brain tissue.
+                                  {% endif %}
+                                </p>
+                                
+                                <ul class="mt-2">
+                                  {% if 'pituitary' in result|lower %}
+                                    <li>May compress optic chiasm causing visual defects</li>
+                                    <li>Primarily disrupts endocrine function</li>
+                                    <li>Limited direct impact on brain parenchyma</li>
+                                  {% elif 'glioma' in result|lower %}
+                                    <li>Infiltrates and disrupts neural tissue</li>
+                                    <li>May cause focal neurological deficits</li>
+                                    <li>Can increase intracranial pressure</li>
+                                  {% elif 'meningioma' in result|lower %}
+                                    <li>Compresses adjacent brain structures</li>
+                                    <li>May involve dural venous sinuses</li>
+                                    <li>Usually causes focal symptoms based on location</li>
+                                  {% endif %}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Functional Systems Impact -->
+                    <div class="card bg-dark mb-4">
+                      <div class="card-header text-primary">Functional Systems Impact</div>
+                      <div class="card-body p-0">
+                        <div class="table-responsive">
+                          <table class="table table-dark table-hover mb-0">
+                            <thead>
+                              <tr>
+                                <th>Functional System</th>
+                                <th>Impact Severity</th>
+                                <th>Potential Symptoms</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% if 'pituitary' in result|lower %}
+                                <tr>
+                                  <td>Motor System</td>
+                                  <td><span class="badge bg-success">Low</span></td>
+                                  <td>Minimal motor impact</td>
+                                </tr>
+                                <tr>
+                                  <td>Sensory System</td>
+                                  <td><span class="badge bg-success">Low</span></td>
+                                  <td>Minimal sensory impact</td>
+                                </tr>
+                                <tr>
+                                  <td>Visual System</td>
+                                  <td><span class="badge bg-danger">High</span></td>
+                                  <td>Visual field cuts (bitemporal hemianopia)</td>
+                                </tr>
+                                <tr>
+                                  <td>Cognitive Function</td>
+                                  <td><span class="badge bg-success">Low</span></td>
+                                  <td>Minimal cognitive impact</td>
+                                </tr>
+                              {% elif 'glioma' in result|lower %}
+                                <tr>
+                                  <td>Motor System</td>
+                                  <td><span class="badge bg-warning text-dark">Medium</span></td>
+                                  <td>Weakness or paralysis depending on location</td>
+                                </tr>
+                                <tr>
+                                  <td>Sensory System</td>
+                                  <td><span class="badge bg-warning text-dark">Medium</span></td>
+                                  <td>Numbness or altered sensation</td>
+                                </tr>
+                                <tr>
+                                  <td>Visual System</td>
+                                  <td><span class="badge bg-warning text-dark">Medium</span></td>
+                                  <td>Possible visual field defects</td>
+                                </tr>
+                                <tr>
+                                  <td>Cognitive Function</td>
+                                  <td><span class="badge bg-danger">High</span></td>
+                                  <td>Memory and executive function impairment</td>
+                                </tr>
+                              {% elif 'meningioma' in result|lower %}
+                                <tr>
+                                  <td>Motor System</td>
+                                  <td><span class="badge bg-warning text-dark">Medium</span></td>
+                                  <td>Focal weakness possible</td>
+                                </tr>
+                                <tr>
+                                  <td>Sensory System</td>
+                                  <td><span class="badge bg-success">Low</span></td>
+                                  <td>Minimal sensory impact in most cases</td>
+                                </tr>
+                                <tr>
+                                  <td>Visual System</td>
+                                  <td><span class="badge bg-warning text-dark">Medium</span></td>
+                                  <td>Visual disturbance if near optic pathways</td>
+                                </tr>
+                                <tr>
+                                  <td>Cognitive Function</td>
+                                  <td><span class="badge bg-success">Low</span></td>
+                                  <td>Generally minimal cognitive impact</td>
+                                </tr>
+                              {% endif %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Rehabilitation Recommendations -->
+                    <div class="card bg-dark">
+                      <div class="card-header text-primary">Rehabilitation Recommendations</div>
+                      <div class="card-body">
+                        <p>Based on the impact assessment, the following rehabilitation approaches are recommended:</p>
+                        
+                        <div class="row mt-3">
+                          {% if 'pituitary' in result|lower %}
+                            <div class="col-md-6 mb-3">
+                              <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 me-3 rounded" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-eye"></i>
+                                </div>
+                                <div>
+                                  <h6 class="mb-0">Vision Therapy</h6>
+                                  <p class="mb-0 text-muted small">Visual field adaptation techniques</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                              <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 me-3 rounded" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-syringe"></i>
+                                </div>
+                                <div>
+                                  <h6 class="mb-0">Hormone Therapy</h6>
+                                  <p class="mb-0 text-muted small">Management of endocrine function</p>
+                                </div>
+                              </div>
+                            </div>
+                          {% elif 'glioma' in result|lower %}
+                            <div class="col-md-6 mb-3">
+                              <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 me-3 rounded" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-brain"></i>
+                                </div>
+                                <div>
+                                  <h6 class="mb-0">Cognitive Rehabilitation</h6>
+                                  <p class="mb-0 text-muted small">Memory and executive function training</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                              <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 me-3 rounded" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-walking"></i>
+                                </div>
+                                <div>
+                                  <h6 class="mb-0">Physical Therapy</h6>
+                                  <p class="mb-0 text-muted small">Motor function recovery and adaptation</p>
+                                </div>
+                              </div>
+                            </div>
+                          {% elif 'meningioma' in result|lower %}
+                            <div class="col-md-6 mb-3">
+                              <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 me-3 rounded" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-balance-scale"></i>
+                                </div>
+                                <div>
+                                  <h6 class="mb-0">Balance Training</h6>
+                                  <p class="mb-0 text-muted small">Vestibular compensation techniques</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                              <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 me-3 rounded" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-comments"></i>
+                                </div>
+                                <div>
+                                  <h6 class="mb-0">Speech Therapy</h6>
+                                  <p class="mb-0 text-muted small">Communication rehabilitation if needed</p>
+                                </div>
+                              </div>
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="generateReportBtn2">Generate Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Initialize particles.js
+        particlesJS("particles-js", {
+          "particles": {
+            "number": {
+              "value": 80,
+              "density": {
+                "enable": true,
+                "value_area": 800
+              }
+            },
+            "color": {
+              "value": "#05c2c9"
+            },
+            "shape": {
+              "type": "circle",
+              "stroke": {
+                "width": 0,
+                "color": "#000000"
+              },
+              "polygon": {
+                "nb_sides": 5
+              }
+            },
+            "opacity": {
+              "value": 0.3,
+              "random": true,
+              "anim": {
+                "enable": true,
+                "speed": 1,
+                "opacity_min": 0.1,
+                "sync": false
+              }
+            },
+            "size": {
+              "value": 3,
+              "random": true,
+              "anim": {
+                "enable": true,
+                "speed": 2,
+                "size_min": 0.1,
+                "sync": false
+              }
+            },
+            "line_linked": {
+              "enable": true,
+              "distance": 150,
+              "color": "#0f4c81",
+              "opacity": 0.2,
+              "width": 1
+            },
+            "move": {
+              "enable": true,
+              "speed": 1,
+              "direction": "none",
+              "random": true,
+              "straight": false,
+              "out_mode": "out",
+              "bounce": false,
+              "attract": {
+                "enable": true,
+                "rotateX": 600,
+                "rotateY": 1200
+              }
+            }
+          },
+          "interactivity": {
+            "detect_on": "canvas",
+            "events": {
+              "onhover": {
+                "enable": true,
+                "mode": "grab"
+              },
+              "onclick": {
+                "enable": true,
+                "mode": "push"
+              },
+              "resize": true
+            },
+            "modes": {
+              "grab": {
+                "distance": 140,
+                "line_linked": {
+                  "opacity": 0.6
+                }
+              },
+              "push": {
+                "particles_nb": 4
+              }
+            }
+          },
+          "retina_detect": true
+        });
+        
+        // Add ripple effect to buttons
+        document.querySelectorAll('.btn').forEach(button => {
+          button.addEventListener('mousedown', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size/2;
+            const y = e.clientY - rect.top - size/2;
+            
+            ripple.className = 'ripple';
+            ripple.style.width = ripple.style.height = `${size}px`;
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+              ripple.remove();
+            }, 600);
+          });
+        });
+        
+        // Fix for form submission and page reload issues
+        const form = document.getElementById('upload-form');
+        const uploadBtn = document.getElementById('upload-btn');
+        
+        if (form) {
+          form.addEventListener('submit', function(e) {
+            // Disable the button to prevent multiple submissions
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            // Show progress animation
+            const progressAnim = document.createElement('div');
+            progressAnim.className = 'progress-animation';
+            this.appendChild(progressAnim);
+            
+            // Submit the form (don't prevent default)
+            // The form will naturally navigate to the result page
+          });
+          
+          // Check if the form was just submitted and we're returning with a POST-redirect
+          if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {
+            // Reset form if coming back from history navigation
+            form.reset();
+          }
+        }
+        
+        // Create neural network visualization
+        function createNeuralNetwork() {
+          const network = document.getElementById('neural-network');
+          if (!network) return;
+          
+          const nodeCount = 15;
+          
+          // Create nodes
+          for (let i = 0; i < nodeCount; i++) {
+            const node = document.createElement('div');
+            node.className = 'neural-node';
+            
+            // Random position
+            const left = Math.random() * 100;
+            const top = Math.random() * 100;
+            
+            // Random size
+            const size = 2 + Math.random() * 6;
+            
+            node.style.left = `${left}%`;
+            node.style.top = `${top}%`;
+            node.style.width = `${size}px`;
+            node.style.height = `${size}px`;
+            
+            network.appendChild(node);
+            
+            // Animate nodes
+            gsap.to(node, {
+              x: -20 + Math.random() * 40,
+              y: -20 + Math.random() * 40,
+              opacity: 0.1 + Math.random() * 0.3,
+              duration: 3 + Math.random() * 4,
+              repeat: -1,
+              yoyo: true,
+              ease: "sine.inOut",
+              delay: Math.random() * 2
+            });
+          }
+          
+          // Create connections between nodes (simplified to improve performance)
+          const nodes = document.querySelectorAll('.neural-node');
+          const maxConnections = Math.min(20, nodes.length * 2); // Limit connections for performance
+          
+          for (let i = 0; i < maxConnections; i++) {
+            const nodeIndex1 = Math.floor(Math.random() * nodes.length);
+            const nodeIndex2 = Math.floor(Math.random() * nodes.length);
+            
+            if (nodeIndex1 === nodeIndex2) continue;
+            
+            const connection = document.createElement('div');
+            connection.className = 'neural-connection';
+            connection.style.position = 'absolute';
+            connection.style.zIndex = '1';
+            connection.style.pointerEvents = 'none';
+            connection.style.background = `linear-gradient(90deg, rgba(5, 194, 201, ${Math.random() * 0.1 + 0.05}), rgba(15, 76, 129, ${Math.random() * 0.1 + 0.05}))`;
+            connection.style.height = '1px';
+            
+            network.appendChild(connection);
+            
+            // Update connection only once to avoid performance issues
+            const rect1 = nodes[nodeIndex1].getBoundingClientRect();
+            const rect2 = nodes[nodeIndex2].getBoundingClientRect();
+            
+            const x1 = rect1.left + rect1.width / 2;
+            const y1 = rect1.top + rect1.height / 2;
+            const x2 = rect2.left + rect2.width / 2;
+            const y2 = rect2.top + rect2.height / 2;
+            
+            const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            
+            connection.style.width = `${length}px`;
+            connection.style.left = `${x1}px`;
+            connection.style.top = `${y1}px`;
+            connection.style.transform = `rotate(${angle}deg)`;
+            connection.style.transformOrigin = '0 0';
+          }
+        }
+        
+        // Call the function to create the neural network with a small delay for better page load
+        setTimeout(createNeuralNetwork, 500);
+        
+        // Add fade-in classes to text elements
+        document.querySelector('.display-4').classList.add('fadeInDown');
+        document.querySelector('.display-6').classList.add('fadeInDown');
+        const caption = document.querySelector('.container p');
+        if (caption) caption.classList.add('caption-animate');
+        
+        // Growth chart initialization if modal exists
+        const growthModal = document.getElementById('growthModal');
+        if (growthModal) {
+          growthModal.addEventListener('shown.bs.modal', function() {
+            // Create treatment comparison chart
+            const ctx = document.getElementById('treatmentComparisonChart').getContext('2d');
+            new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: ['Initial', '1 Month', '3 Months', '6 Months', '9 Months', '12 Months'],
+                datasets: [
+                  {
+                    label: 'Without Treatment',
+                    data: [100, 102, 105, 108, 112, 115],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                  },
+                  {
+                    label: 'With Surgery',
+                    data: [100, 5, 5, 5, 5, 5],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                  },
+                  {
+                    label: 'With Medical Therapy',
+                    data: [100, 85, 70, 65, 60, 58],
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                    labels: {
+                      color: 'white'
+                    }
+                  },
+                  tooltip: {
+                    mode: 'index',
+                    intersect: false
+                  }
+                },
+                scales: {
+                  y: {
+                    title: {
+                      display: true,
+                      text: 'Volume (%)',
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    beginAtZero: true,
+                    ticks: {
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                      color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Time',
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    ticks: {
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                      color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  }
+                },
+                animation: {
+                  duration: 2000,
+                  easing: 'easeOutQuart'
+                }
+              }
+            });
+          });
+          
+          // Also enable Generate Report button in the growth modal
+          const reportBtn2 = document.getElementById('generateReportBtn2');
+          if (reportBtn2) {
+            reportBtn2.addEventListener('click', function() {
+              // Trigger the same functionality as the main generate report button
+              document.getElementById('generateReportBtn').click();
+            });
+          }
+        }
+        
+        // Report generation functionality
+        const reportBtn = document.getElementById('generateReportBtn');
+        if (reportBtn) {
+          reportBtn.addEventListener('click', function() {
+            // Show loading toast
+            showToast('Generating comprehensive report...', 'info');
+            
+            // Get the tumor type and other data
+            const tumorType = "{{ result }}".replace('Tumor Type: ', '');
+            const confidence = "{{ confidence }}".replace('Confidence: ', '');
+            const brainRegion = "{{ brain_region }}" || "Unknown region";
+            
+            // Create report data based on tumor type
+            const reportData = {
+              patientInfo: {
+                examDate: new Date().toLocaleDateString(),
+                patientId: "PT" + Math.floor(Math.random() * 10000),
+                scanType: "MRI Brain with contrast"
+              },
+              tumorInfo: {
+                type: tumorType,
+                confidence: confidence,
+                location: brainRegion,
+                size: document.getElementById('current-size') ? document.getElementById('current-size').textContent : "Not measured",
+                estimatedSize: document.getElementById('current-size') ? document.getElementById('current-size').textContent : "18 x 15 mm"
+              },
+              clinicalAssessment: {
+                riskLevel: tumorType.includes('glioma') ? "High" : 
+                           tumorType.includes('meningioma') ? "Medium" : "Medium",
+                anatomicalContext: `This tumor is located in the ${brainRegion}.`,
+                functionalImpact: getImpactText(tumorType, brainRegion)
+              },
+              treatmentOptions: {
+                surgical: getSurgicalOptions(tumorType),
+                radiation: getRadiationOptions(tumorType),
+                medical: getMedicalOptions(tumorType)
+              },
+              rehabilitationRecommendations: getRehabilitation(tumorType, brainRegion)
+            };
+            
+            // Create a direct PDF using jsPDF
+            setTimeout(() => {
+              try {
+                // Create PDF document
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                  orientation: 'portrait',
+                  unit: 'mm',
+                  format: 'a4',
+                  compress: true
+                });
+                
+                // Set default font
+                doc.setFont('helvetica');
+                
+                // Define margins and spacing
+                const margin = {
+                  left: 20,
+                  right: 20,
+                  top: 20
+                };
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const contentWidth = pageWidth - margin.left - margin.right;
+                
+                // Track current Y position
+                let currentY = margin.top;
+                
+                // Add title
+                doc.setFontSize(20);
+                doc.setTextColor(15, 76, 129); // #0f4c81
+                doc.text('Brain Tumor Assessment Report', pageWidth / 2, currentY, { align: 'center' });
+                currentY += 12;
+                
+                // Add generation date
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Generated on ${reportData.patientInfo.examDate}`, pageWidth / 2, currentY, { align: 'center' });
+                currentY += 15;
+                
+                // Patient and Tumor Info Section
+                doc.setFontSize(16);
+                doc.setTextColor(15, 76, 129);
+                doc.text('Tumor Classification', margin.left, currentY);
+                currentY += 10;
+                
+                // Info table
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                const tumorInfoData = [
+                  ['Type:', reportData.tumorInfo.type],
+                  ['Confidence:', reportData.tumorInfo.confidence],
+                  ['Location:', reportData.tumorInfo.location],
+                  ['Estimated Size:', reportData.tumorInfo.estimatedSize],
+                  ['Clinical Risk Level:', reportData.clinicalAssessment.riskLevel]
+                ];
+                
+                doc.autoTable({
+                  startY: currentY,
+                  head: [],
+                  body: tumorInfoData,
+                  theme: 'plain',
+                  styles: { cellPadding: 3, fontSize: 11 },
+                  columnStyles: { 
+                    0: { cellWidth: 45, fontStyle: 'bold' },
+                    1: { cellWidth: 'auto' }
+                  },
+                  margin: { left: margin.left, right: margin.right },
+                  didDrawPage: (data) => {
+                    // Update current Y position after table is drawn
+                    currentY = data.cursor.y + 10;
+                  }
+                });
+                
+                // Anatomical Context
+                doc.setFontSize(16);
+                doc.setTextColor(15, 76, 129);
+                doc.text('Anatomical Context', margin.left, currentY);
+                currentY += 10;
+                
+                // Split long anatomical context text into multiple lines if needed
+                const maxWidth = contentWidth;
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                const anatomicalContext = doc.splitTextToSize(reportData.clinicalAssessment.anatomicalContext, maxWidth);
+                doc.text(anatomicalContext, margin.left, currentY);
+                currentY += (anatomicalContext.length * 7) + 15;
+                
+                // Chart Section - draw chart first, as it takes space
+                doc.setFontSize(16);
+                doc.setTextColor(15, 76, 129);
+                doc.text('Tumor Volume Over Time', margin.left, currentY);
+                currentY += 10;
+                
+                // Generate fallback chart
+                function generateFallbackChart(doc, y) {
+                  const chartWidth = contentWidth;
+                  const chartHeight = 80;
+                  
+                  // Draw chart background
+                  doc.setDrawColor(220, 220, 220);
+                  doc.setFillColor(248, 248, 248);
+                  doc.roundedRect(margin.left, y, chartWidth, chartHeight, 3, 3, 'FD');
+                  
+                  // Draw baseline
+                  doc.setDrawColor(180, 180, 180);
+                  doc.setLineWidth(0.3);
+                  doc.line(margin.left + 10, y + chartHeight - 15, margin.left + chartWidth - 10, y + chartHeight - 15);
+                  
+                  // Draw axes labels
+                  doc.setFontSize(8);
+                  doc.setTextColor(100, 100, 100);
+                  doc.text('Time (months)', margin.left + chartWidth/2, y + chartHeight - 5, { align: 'center' });
+                  doc.text('Volume (%)', margin.left + 5, y + chartHeight/2, { angle: 90 });
+                  
+                  // X-axis labels
+                  const months = ['Initial', '1 Month', '3 Months', '6 Months', '9 Months', '12 Months'];
+                  const xPositions = [
+                    margin.left + 15,
+                    margin.left + 15 + (chartWidth - 30) * 0.2,
+                    margin.left + 15 + (chartWidth - 30) * 0.4,
+                    margin.left + 15 + (chartWidth - 30) * 0.6,
+                    margin.left + 15 + (chartWidth - 30) * 0.8,
+                    margin.left + chartWidth - 15
+                  ];
+                  doc.setFontSize(7);
+                  months.forEach((month, i) => {
+                    doc.text(month, xPositions[i], y + chartHeight - 8, { align: 'center' });
+                  });
+                  
+                  // Y-axis scale
+                  doc.setFontSize(7);
+                  doc.text('100%', margin.left + 8, y + 15);
+                  doc.text('0%', margin.left + 8, y + chartHeight - 15);
+                  
+                  // Draw data lines with proper positioning
+                  const yBase = y + chartHeight - 15; // 0% position
+                  const yTop = y + 15; // 100% position
+                  const yRange = yBase - yTop;
+                  
+                  // Without treatment (rising line) - red
+                  const withoutTreatmentData = [100, 102, 105, 108, 112, 115];
+                  doc.setDrawColor(231, 76, 60); // red
+                  doc.setLineWidth(1.5);
+                  for (let i = 0; i < xPositions.length - 1; i++) {
+                    const y1 = yBase - (withoutTreatmentData[i] / 100 * yRange);
+                    const y2 = yBase - (withoutTreatmentData[i+1] / 100 * yRange);
+                    doc.line(xPositions[i], y1, xPositions[i+1], y2);
+                  }
+                  
+                  // With surgery (dramatic drop) - blue
+                  const withSurgeryData = [100, 5, 5, 5, 5, 5];
+                  doc.setDrawColor(52, 152, 219); // blue
+                  doc.setLineWidth(1.5);
+                  for (let i = 0; i < xPositions.length - 1; i++) {
+                    const y1 = yBase - (withSurgeryData[i] / 100 * yRange);
+                    const y2 = yBase - (withSurgeryData[i+1] / 100 * yRange);
+                    doc.line(xPositions[i], y1, xPositions[i+1], y2);
+                  }
+                  
+                  // With medical therapy (gradual decrease) - green
+                  const withMedicalData = [100, 85, 70, 65, 60, 58];
+                  doc.setDrawColor(46, 204, 113); // green
+                  doc.setLineWidth(1.5);
+                  for (let i = 0; i < xPositions.length - 1; i++) {
+                    const y1 = yBase - (withMedicalData[i] / 100 * yRange);
+                    const y2 = yBase - (withMedicalData[i+1] / 100 * yRange);
+                    doc.line(xPositions[i], y1, xPositions[i+1], y2);
+                  }
+                  
+                  // Legend
+                  const legendY = y + 5;
+                  doc.setFillColor(231, 76, 60);
+                  doc.rect(margin.left + 20, legendY, 10, 3, 'F');
+                  doc.setFillColor(52, 152, 219);
+                  doc.rect(margin.left + 80, legendY, 10, 3, 'F');
+                  doc.setFillColor(46, 204, 113);
+                  doc.rect(margin.left + 140, legendY, 10, 3, 'F');
+                  
+                  doc.setFontSize(8);
+                  doc.setTextColor(50, 50, 50);
+                  doc.text('Without Treatment', margin.left + 32, legendY + 3);
+                  doc.text('With Surgery', margin.left + 92, legendY + 3);
+                  doc.text('With Medical Therapy', margin.left + 152, legendY + 3);
+                  
+                  return chartHeight + 15; // Return the height including padding
+                }
+                
+                // Try to capture the chart or generate fallback
+                let chartHeight = 0;
+                try {
+                  if (document.getElementById('treatmentComparisonChart')) {
+                    try {
+                      // Capture the chart canvas as an image
+                      const chartCanvas = document.getElementById('treatmentComparisonChart');
+                      const chartImage = chartCanvas.toDataURL('image/png', 1.0);
+                      
+                      // Add image to PDF - with proper positioning
+                      const imgWidth = contentWidth;
+                      const imgHeight = 90;
+                      doc.addImage(chartImage, 'PNG', margin.left, currentY, imgWidth, imgHeight);
+                      chartHeight = imgHeight + 10;
+                    } catch (canvasError) {
+                      console.warn('Unable to capture chart canvas, using fallback:', canvasError);
+                      chartHeight = generateFallbackChart(doc, currentY);
+                    }
+                  } else {
+                    // If chart element isn't found, generate a fallback
+                    chartHeight = generateFallbackChart(doc, currentY);
+                  }
+                } catch (chartError) {
+                  console.error('Error adding chart to PDF:', chartError);
+                  // Continue without the chart if there's an error
+                }
+                
+                currentY += chartHeight + 5;
+                
+                // Treatment Options Section - check if we need a new page
+                if (currentY > doc.internal.pageSize.getHeight() - 80) {
+                  doc.addPage();
+                  currentY = margin.top;
+                }
+                
+                doc.setFontSize(16);
+                doc.setTextColor(15, 76, 129);
+                doc.text('Treatment Options', margin.left, currentY);
+                currentY += 10;
+                
+                // Surgical Option
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Surgical Resection', margin.left, currentY);
+                doc.setFont('helvetica', 'normal');
+                currentY += 8;
+                
+                // Surgical details table
+                const surgicalData = [
+                  ['Recommended Approach:', reportData.treatmentOptions.surgical.approach],
+                  ['Expected Outcome:', reportData.treatmentOptions.surgical.outcome]
+                ];
+                
+                doc.autoTable({
+                  startY: currentY,
+                  head: [],
+                  body: surgicalData,
+                  theme: 'plain',
+                  styles: { cellPadding: 3, fontSize: 10, overflow: 'linebreak', cellWidth: 'wrap' },
+                  columnStyles: { 
+                    0: { cellWidth: 45, fontStyle: 'bold' },
+                    1: { cellWidth: 'auto' }
+                  },
+                  margin: { left: margin.left, right: margin.right },
+                  didDrawPage: (data) => {
+                    currentY = data.cursor.y + 5;
+                  }
+                });
+                
+                // Radiation Option
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Radiation Therapy', margin.left, currentY);
+                doc.setFont('helvetica', 'normal');
+                currentY += 8;
+                
+                // Radiation details table
+                const radiationData = [
+                  ['Recommended Approach:', reportData.treatmentOptions.radiation.approach],
+                  ['Expected Outcome:', reportData.treatmentOptions.radiation.outcome]
+                ];
+                
+                doc.autoTable({
+                  startY: currentY,
+                  head: [],
+                  body: radiationData,
+                  theme: 'plain',
+                  styles: { cellPadding: 3, fontSize: 10, overflow: 'linebreak', cellWidth: 'wrap' },
+                  columnStyles: { 
+                    0: { cellWidth: 45, fontStyle: 'bold' },
+                    1: { cellWidth: 'auto' }
+                  },
+                  margin: { left: margin.left, right: margin.right },
+                  didDrawPage: (data) => {
+                    currentY = data.cursor.y + 5;
+                  }
+                });
+                
+                // Medical Option
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Medical Therapy', margin.left, currentY);
+                doc.setFont('helvetica', 'normal');
+                currentY += 8;
+                
+                // Medical details table
+                const medicalData = [
+                  ['Recommended Approach:', reportData.treatmentOptions.medical.approach],
+                  ['Expected Outcome:', reportData.treatmentOptions.medical.outcome]
+                ];
+                
+                doc.autoTable({
+                  startY: currentY,
+                  head: [],
+                  body: medicalData,
+                  theme: 'plain',
+                  styles: { cellPadding: 3, fontSize: 10, overflow: 'linebreak', cellWidth: 'wrap' },
+                  columnStyles: { 
+                    0: { cellWidth: 45, fontStyle: 'bold' },
+                    1: { cellWidth: 'auto' }
+                  },
+                  margin: { left: margin.left, right: margin.right },
+                  didDrawPage: (data) => {
+                    currentY = data.cursor.y + 10;
+                  }
+                });
+                
+                // Always start a new page for functional impact
+                doc.addPage();
+                currentY = margin.top;
+                
+                // Functional Impact Assessment
+                doc.setFontSize(16);
+                doc.setTextColor(15, 76, 129);
+                doc.text('Functional Impact Assessment', margin.left, currentY);
+                currentY += 10;
+                
+                // Prepare functional impact data for table
+                let impactTableData = [];
+                
+                if (tumorType.includes('pituitary')) {
+                  impactTableData = [
+                    ['Motor System', 'Low', 'Minimal motor impact'],
+                    ['Sensory System', 'Low', 'Minimal sensory impact'],
+                    ['Visual System', 'High', 'Visual field cuts (bitemporal hemianopia)'],
+                    ['Cognitive Function', 'Low', 'Minimal cognitive impact']
+                  ];
+                } else if (tumorType.includes('glioma')) {
+                  impactTableData = [
+                    ['Motor System', 'Medium', 'Potential weakness or paralysis'],
+                    ['Sensory System', 'Medium', 'Numbness or tingling'],
+                    ['Visual System', 'Medium', 'Possible visual field defects'],
+                    ['Cognitive Function', 'High', 'Memory, attention, and executive function deficits']
+                  ];
+                } else if (tumorType.includes('meningioma')) {
+                  impactTableData = [
+                    ['Motor System', 'Medium', 'Possible weakness depending on location'],
+                    ['Sensory System', 'Low', 'Minimal sensory impact in most cases'],
+                    ['Visual System', 'Medium', 'Possible visual field defects if near optic pathways'],
+                    ['Cognitive Function', 'Low', 'Generally minimal cognitive impact']
+                  ];
+                } else {
+                  impactTableData = [
+                    ['Motor System', 'Unknown', 'Further assessment required'],
+                    ['Sensory System', 'Unknown', 'Further assessment required'],
+                    ['Visual System', 'Unknown', 'Further assessment required'],
+                    ['Cognitive Function', 'Unknown', 'Further assessment required']
+                  ];
+                }
+                
+                // Create impact assessment table
+                doc.autoTable({
+                  startY: currentY,
+                  head: [['Functional System', 'Impact Severity', 'Potential Symptoms']],
+                  body: impactTableData,
+                  theme: 'striped',
+                  headStyles: { fillColor: [15, 76, 129], textColor: [255, 255, 255], fontStyle: 'bold' },
+                  styles: { cellPadding: 4, fontSize: 10, overflow: 'linebreak' },
+                  columnStyles: {
+                    0: { cellWidth: 40 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 'auto' }
+                  },
+                  margin: { left: margin.left, right: margin.right },
+                  didDrawPage: (data) => {
+                    currentY = data.cursor.y + 15;
+                  }
+                });
+                
+                // Rehabilitation Recommendations
+                doc.setFontSize(16);
+                doc.setTextColor(15, 76, 129);
+                doc.text('Rehabilitation Recommendations', margin.left, currentY);
+                currentY += 10;
+                
+                // Add recommendations as bullet points
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                
+                reportData.rehabilitationRecommendations.forEach((recommendation, index) => {
+                  const bulletText = `• ${recommendation}`;
+                  const lines = doc.splitTextToSize(bulletText, contentWidth - 5);
+                  
+                  // Check if we need a new page
+                  if (currentY + (lines.length * 6) > doc.internal.pageSize.getHeight() - 20) {
+                    doc.addPage();
+                    currentY = margin.top;
+                  }
+                  
+                  doc.text(lines, margin.left, currentY);
+                  currentY += lines.length * 6 + 4; // Add some spacing between bullet points
+                });
+                
+                // Add footer note on all pages
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                  doc.setPage(i);
+                  doc.setFontSize(8);
+                  doc.setTextColor(100, 100, 100);
+                  const footerText = 'Note: This is an AI-generated assessment and should be reviewed by a healthcare professional.';
+                  doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+                  
+                  // Add page numbers
+                  doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin.right, doc.internal.pageSize.getHeight() - 10);
+                }
+                
+                // Save the PDF
+                doc.save(`Tumor_Report_${tumorType}_${new Date().toISOString().split('T')[0]}.pdf`);
+                showToast('Medical report downloaded!', 'success');
+              } catch (error) {
+                console.error('Error generating PDF:', error);
+                showToast('Error generating report. Please try again.', 'error');
+              }
+            }, 1000);
+          });
+        }
+        
+        // Helper function to generate HTML report - keep this for reference
+        function generateReportHTML(data) {
+          return `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <title>Tumor Report: ${data.tumorInfo.type}</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              h1, h2, h3 { color: #0f4c81; }
+              .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+              .section { margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; }
+              .info-row { display: flex; margin-bottom: 8px; }
+              .info-label { flex: 0 0 180px; font-weight: bold; }
+              .info-value { flex: 1; }
+              .risk-high { color: #e74c3c; font-weight: bold; }
+              .risk-medium { color: #f39c12; font-weight: bold; }
+              .risk-low { color: #2ecc71; font-weight: bold; }
+              table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+              table, th, td { border: 1px solid #ddd; }
+              th, td { padding: 8px; text-align: left; }
+              th { background-color: #0f4c81; color: white; }
+              tr:nth-child(even) { background-color: #f2f2f2; }
+              .chart-placeholder { height: 300px; width: 100%; background-color: #eee; display: flex; align-items: center; justify-content: center; margin: 15px 0; }
+              .footer { font-size: 12px; color: #666; margin-top: 30px; text-align: center; }
+              @media print {
+                body { font-size: 12px; }
+                .section { padding: 10px; margin-bottom: 15px; }
+                .chart-placeholder { height: 250px; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Brain Tumor Assessment Report</h1>
+              <p>Generated on ${data.patientInfo.examDate}</p>
+            </div>
+            
+            <div class="section">
+              <h2>Tumor Classification</h2>
+              <div class="info-row">
+                <div class="info-label">Type:</div>
+                <div class="info-value">${data.tumorInfo.type}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Confidence:</div>
+                <div class="info-value">${data.tumorInfo.confidence}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Location:</div>
+                <div class="info-value">${data.tumorInfo.location}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Estimated Size:</div>
+                <div class="info-value">${data.tumorInfo.estimatedSize}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Clinical Risk Level:</div>
+                <div class="info-value" class="risk-${data.clinicalAssessment.riskLevel.toLowerCase()}">${data.clinicalAssessment.riskLevel}</div>
+              </div>
+            </div>
+            
+            <div class="section">
+              <h2>Anatomical Context</h2>
+              <p>${data.clinicalAssessment.anatomicalContext}</p>
+            </div>
+            
+            <div class="section">
+              <h2>Treatment Monitoring & Impact Assessment</h2>
+              
+              <h3>Tumor Volume Over Time</h3>
+              <div class="chart-placeholder">
+                [Projected Tumor Volume Chart]
+              </div>
+              
+              <h3>Treatment Options</h3>
+              <div class="treatment-option">
+                <h4>Surgical Resection</h4>
+                <div class="info-row">
+                  <div class="info-label">Recommended Approach:</div>
+                  <div class="info-value">${data.treatmentOptions.surgical.approach}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Expected Outcome:</div>
+                  <div class="info-value">${data.treatmentOptions.surgical.outcome}</div>
+                </div>
+              </div>
+              
+              <div class="treatment-option">
+                <h4>Radiation Therapy</h4>
+                <div class="info-row">
+                  <div class="info-label">Recommended Approach:</div>
+                  <div class="info-value">${data.treatmentOptions.radiation.approach}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Expected Outcome:</div>
+                  <div class="info-value">${data.treatmentOptions.radiation.outcome}</div>
+                </div>
+              </div>
+              
+              <div class="treatment-option">
+                <h4>Medical Therapy</h4>
+                <div class="info-row">
+                  <div class="info-label">Recommended Approach:</div>
+                  <div class="info-value">${data.treatmentOptions.medical.approach}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Expected Outcome:</div>
+                  <div class="info-value">${data.treatmentOptions.medical.outcome}</div>
+                </div>
+              </div>
+              
+              <h3>Functional Impact Assessment</h3>
+              <table>
+                <tr>
+                  <th>Functional System</th>
+                  <th>Impact Severity</th>
+                  <th>Potential Symptoms</th>
+                </tr>
+                ${getFunctionalImpactTableRows(data.tumorInfo.type, data.tumorInfo.location)}
+              </table>
+              
+              <h3>Rehabilitation Recommendations</h3>
+              <ul>
+                ${data.rehabilitationRecommendations.map(item => `<li>${item}</li>`).join('')}
+              </ul>
+            </div>
+            
+            <div class="footer">
+              <p><strong>Note:</strong> This is an AI-generated assessment and should be reviewed by a healthcare professional. The assessment is based on image analysis and statistical models.</p>
+            </div>
+          </body>
+          </html>
+          `;
+        }
+        
+        // Helper functions for report data
+        function getImpactText(tumorType, brainRegion) {
+          if (tumorType.includes('pituitary')) {
+            return "Pituitary tumors primarily affect hormone function and may compress adjacent structures. Limited direct impact on brain parenchyma.";
+          } else if (tumorType.includes('glioma')) {
+            return "Gliomas infiltrate brain tissue and can cause significant neurological deficits depending on location.";
+          } else if (tumorType.includes('meningioma')) {
+            return "Meningiomas typically compress rather than infiltrate brain tissue, with symptoms related to pressure on adjacent structures.";
+          } else {
+            return "Impact assessment requires further clinical correlation.";
+          }
+        }
+        
+        function getSurgicalOptions(tumorType) {
+          if (tumorType.includes('pituitary')) {
+            return {
+              approach: "Endoscopic transsphenoidal approach",
+              outcome: "Complete removal with hormone normalization possible"
+            };
+          } else if (tumorType.includes('glioma')) {
+            return {
+              approach: "Craniotomy with intraoperative mapping",
+              outcome: "Maximal safe resection, potential for incomplete removal"
+            };
+          } else if (tumorType.includes('meningioma')) {
+            return {
+              approach: "Craniotomy with complete resection",
+              outcome: "Complete removal possible in most cases"
+            };
+          } else {
+            return {
+              approach: "To be determined based on final diagnosis",
+              outcome: "Pending final diagnosis"
+            };
+          }
+        }
+        
+        function getRadiationOptions(tumorType) {
+          if (tumorType.includes('pituitary')) {
+            return {
+              approach: "Stereotactic radiosurgery for residual or recurrent tumor",
+              outcome: "Tumor control rate >90% with hormone normalization in 40-60%"
+            };
+          } else if (tumorType.includes('glioma')) {
+            return {
+              approach: "Fractionated external beam radiation therapy",
+              outcome: "Improved progression-free survival with moderately high recurrence risk"
+            };
+          } else if (tumorType.includes('meningioma')) {
+            return {
+              approach: "Stereotactic radiosurgery for incompletely resected tumors",
+              outcome: "Long-term control rates >90% for grade I meningiomas"
+            };
+          } else {
+            return {
+              approach: "To be determined based on final diagnosis",
+              outcome: "Pending final diagnosis"
+            };
+          }
+        }
+        
+        function getMedicalOptions(tumorType) {
+          if (tumorType.includes('pituitary')) {
+            return {
+              approach: "Dopamine agonists for prolactinomas, somatostatin analogs for acromegaly",
+              outcome: "Hormone normalization in 60-90% of prolactinomas, variable for other types"
+            };
+          } else if (tumorType.includes('glioma')) {
+            return {
+              approach: "Temozolomide chemotherapy with potential targeted therapy",
+              outcome: "Modest improvement in overall survival, variable response based on molecular profile"
+            };
+          } else if (tumorType.includes('meningioma')) {
+            return {
+              approach: "Observation for most cases, hormone therapy for refractory cases",
+              outcome: "Limited efficacy of medical therapy, typically used for recurrent disease"
+            };
+          } else {
+            return {
+              approach: "To be determined based on final diagnosis",
+              outcome: "Pending final diagnosis"
+            };
+          }
+        }
+        
+        function getRehabilitation(tumorType, brainRegion) {
+          const recommendations = [];
+          
+          if (tumorType.includes('pituitary')) {
+            recommendations.push("Hormone Therapy: Management of endocrine function");
+            recommendations.push("Vision Therapy: Visual field adaptation techniques");
+          } else if (brainRegion.includes("Frontal")) {
+            recommendations.push("Cognitive Rehabilitation: Executive function training");
+            recommendations.push("Behavioral Therapy: Personality and emotional management");
+          } else if (brainRegion.includes("Temporal")) {
+            recommendations.push("Speech Therapy: Language and comprehension exercises");
+            recommendations.push("Memory Training: Techniques for memory improvement");
+          } else if (brainRegion.includes("Occipital")) {
+            recommendations.push("Vision Therapy: Visual field compensation strategies");
+          } else if (brainRegion.includes("Parietal")) {
+            recommendations.push("Sensory Integration: Tactile and proprioceptive rehabilitation");
+            recommendations.push("Spatial Orientation Training: Navigation and awareness exercises");
+          } else if (brainRegion.includes("Cerebellum")) {
+            recommendations.push("Balance Training: Coordination and equilibrium exercises");
+            recommendations.push("Gait Training: Assistive devices and movement therapy");
+          }
+          
+          if (recommendations.length === 0) {
+            recommendations.push("Comprehensive neurological assessment to determine specific rehabilitation needs");
+          }
+          
+          return recommendations;
+        }
+        
+        function getFunctionalImpactTableRows(tumorType, location) {
+          if (tumorType.includes('pituitary')) {
+            return `
+              <tr>
+                <td>Motor System</td>
+                <td><span style="color: #2ecc71; font-weight: bold;">Low</span></td>
+                <td>Minimal motor impact</td>
+              </tr>
+              <tr>
+                <td>Sensory System</td>
+                <td><span style="color: #2ecc71; font-weight: bold;">Low</span></td>
+                <td>Minimal sensory impact</td>
+              </tr>
+              <tr>
+                <td>Visual System</td>
+                <td><span style="color: #e74c3c; font-weight: bold;">High</span></td>
+                <td>Visual field cuts (bitemporal hemianopia)</td>
+              </tr>
+              <tr>
+                <td>Cognitive Function</td>
+                <td><span style="color: #2ecc71; font-weight: bold;">Low</span></td>
+                <td>Minimal cognitive impact</td>
+              </tr>
+            `;
+          } else if (tumorType.includes('glioma')) {
+            return `
+              <tr>
+                <td>Motor System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Medium</span></td>
+                <td>Potential weakness or paralysis</td>
+              </tr>
+              <tr>
+                <td>Sensory System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Medium</span></td>
+                <td>Numbness or tingling</td>
+              </tr>
+              <tr>
+                <td>Visual System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Medium</span></td>
+                <td>Possible visual field defects</td>
+              </tr>
+              <tr>
+                <td>Cognitive Function</td>
+                <td><span style="color: #e74c3c; font-weight: bold;">High</span></td>
+                <td>Memory, attention, and executive function deficits</td>
+              </tr>
+            `;
+          } else if (tumorType.includes('meningioma')) {
+            return `
+              <tr>
+                <td>Motor System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Medium</span></td>
+                <td>Possible weakness depending on location</td>
+              </tr>
+              <tr>
+                <td>Sensory System</td>
+                <td><span style="color: #2ecc71; font-weight: bold;">Low</span></td>
+                <td>Minimal sensory impact in most cases</td>
+              </tr>
+              <tr>
+                <td>Visual System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Medium</span></td>
+                <td>Possible visual field defects if near optic pathways</td>
+              </tr>
+              <tr>
+                <td>Cognitive Function</td>
+                <td><span style="color: #2ecc71; font-weight: bold;">Low</span></td>
+                <td>Generally minimal cognitive impact</td>
+              </tr>
+            `;
+          } else {
+            return `
+              <tr>
+                <td>Motor System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Unknown</span></td>
+                <td>Further assessment required</td>
+              </tr>
+              <tr>
+                <td>Sensory System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Unknown</span></td>
+                <td>Further assessment required</td>
+              </tr>
+              <tr>
+                <td>Visual System</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Unknown</span></td>
+                <td>Further assessment required</td>
+              </tr>
+              <tr>
+                <td>Cognitive Function</td>
+                <td><span style="color: #f39c12; font-weight: bold;">Unknown</span></td>
+                <td>Further assessment required</td>
+              </tr>
+            `;
+          }
+        }
+        
+        // Toast notification function
+        function showToast(message, type = 'info') {
+          // Create toast container if it doesn't exist
+          let toastContainer = document.querySelector('.toast-container');
+          if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container';
+            document.body.appendChild(toastContainer);
+          }
+          
+          // Create toast
+          const toast = document.createElement('div');
+          toast.className = `toast ${type}`;
+          toast.innerHTML = message;
+          
+          // Add to container
+          toastContainer.appendChild(toast);
+          
+          // Show toast
+          setTimeout(() => {
+            toast.classList.add('show');
+          }, 100);
+          
+          // Remove after 3 seconds
+          setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+              toast.remove();
+            }, 300);
+          }, 3000);
+        }
+      });
+    </script>
+    
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js for growth prediction -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+  </body>
+</html>

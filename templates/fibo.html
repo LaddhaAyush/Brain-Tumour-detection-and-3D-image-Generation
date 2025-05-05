@@ -1,0 +1,132 @@
+# prompt: write a proper beautiful html code for above written code
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Brain Tumor Prediction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #05c2c9;
+            --secondary: #0f4c81;
+            --accent: #36b5cd;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --error: #e74c3c;
+            --dark: #0d1b2a;
+            --dark-secondary: #1b263b;
+            --light: #f8f9fa;
+            --text-light: #ffffff;
+            --text-dark: #1b263b;
+            --panel-border: rgba(5, 194, 201, 0.15);
+            --transition-speed: 0.3s;
+            --border-radius: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--dark);
+            color: var(--text-light);
+        }
+
+        .container {
+            background-color: var(--dark-secondary);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 500px;
+            text-align: center;
+            margin-top: 50px;
+            border: 1px solid var(--panel-border);
+        }
+        
+        h1 {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--panel-border);
+            color: var(--text-light);
+            padding: 10px;
+            border-radius: var(--border-radius);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        input[type="submit"] {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+            font-family: 'Poppins', sans-serif;
+            width: 100%;
+        }
+        
+        input[type="submit"]:hover {
+            background-color: #04a9b0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(5, 194, 201, 0.4);
+        }
+        
+        #result {
+            margin-top: 25px;
+            font-size: 18px;
+            font-weight: 500;
+            background-color: rgba(15, 76, 129, 0.3);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary);
+        }
+
+        img {
+            max-width: 300px;
+            max-height: 300px;
+            margin-top: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+        
+        .prediction-text {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .confidence {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Brain Tumor Prediction</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*">
+            <input type="submit" value="Predict">
+        </form>
+
+        {% if result %}
+            <div id="result">
+                <div class="prediction-text">Prediction: {{ result }}</div>
+                <div class="confidence">Confidence: {{ confidence }}</div>
+                <img src="{{ file_path }}" alt="Uploaded Image">
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
