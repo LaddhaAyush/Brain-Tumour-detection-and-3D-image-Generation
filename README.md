@@ -26,7 +26,7 @@ This project is an advanced brain tumor detection and visualization system that 
 
 1. Clone the repository:
 ```bash
-git clone [your-repository-url]
+git clone https://github.com/LaddhaAyush/Brain-Tumour-detection-and-3D-image-Generation.git
 cd [repository-name]
 ```
 
