@@ -1,61 +1,121 @@
-# Brain Tumor Mapping Application
+# Brain Tumor Detection and 3D Visualization System
 
-## Overview
-This application provides an interactive 3D visualization of a brain model with customizable tumor mapping. It allows users to input specific tumor coordinates or use default values.
+This project is an advanced brain tumor detection and visualization system that uses deep learning to detect brain tumors from MRI scans and provides an interactive 3D visualization of the detected tumors in a brain model. The system can classify tumors into different types (glioma, meningioma, pituitary) and provides detailed information about their location and potential impact.
 
 ## Features
-- Input custom tumor coordinates (8 points to define a bounding box)
-- Default tumor coordinates for demonstration
-- Interactive 3D brain model visualization
-- Brain explosion effect for better visualization
-- Tumor highlighting and coordinate display
-- Keyboard controls for navigation and interaction
 
-## How to Use
+- Brain tumor detection using YOLOv8
+- Classification of tumors into different types
+- Interactive 3D visualization of the brain with tumor locations
+- Anatomically accurate tumor placement
+- Detailed impact analysis based on tumor type and location
+- Web-based interface for easy interaction
+- Support for multiple tumor types:
+  - Glioma
+  - Meningioma
+  - Pituitary
+  - No tumor detection
 
-### Setting Up Tumor Coordinates
-1. When you first open the application, you'll see a form to input tumor coordinates
-2. Enter X, Y, Z values for all 8 points of the tumor bounding box
-3. Click "Create Tumor" to visualize with your coordinates
-4. Alternatively, click "Use Default Coordinates" to use pre-defined values
+## Prerequisites
 
-### Interacting with the Model
-- **Mouse Controls**:
-  - Left-click and drag to rotate the brain model
-  - Scroll to zoom in/out
-  - Double-click to focus on tumor
+- Python 3.8 or higher
+- pip (Python package installer)
+- Git (for cloning the repository)
 
-- **Keyboard Controls**:
-  - **Space**: Toggle brain explosion effect
-  - **A**: Toggle tumor axis and coordinate display
-  - **+/-**: Increase/decrease brain size
-  - **R**: Reset view
-  - **Tab**: Cycle through brain parts
+## Installation
 
-- **Buttons**:
-  - "EXPLODE BRAIN": Manually toggle the explosion effect
-  - "SHOW AXIS": Display the tumor coordinate axes
-  - "ENHANCE MATERIALS": Improve visualization materials
-  - "Change Tumor Location": Return to the coordinate input form
+1. Clone the repository:
+```bash
+git clone [your-repository-url]
+cd [repository-name]
+```
 
-## Tumor Coordinate Format
-Tumor coordinates should define a 3D bounding box with 8 points. The suggested order is:
-1. Front bottom left
-2. Front bottom right
-3. Front top right
-4. Front top left
-5. Back bottom left
-6. Back bottom right
-7. Back top right
-8. Back top left
+2. Create and activate a virtual environment:
+
+For Windows:
+```bash
+python -m venv myenv
+myenv\Scripts\activate
+```
+
+For Linux/Mac:
+```bash
+python3 -m venv myenv
+source myenv/bin/activate
+```
+
+3. Install the required packages:
+```bash
+pip install -r requirements.txt
+```
+
+## Project Structure
+
+```
+├── main2.py              # Main application file
+├── fibonacciNet.py       # Neural network implementation
+├── combine.py           # Utility functions
+├── models/              # Contains the trained model
+│   └── best.pt         # YOLOv8 model weights
+├── static/             # Static files (CSS, JS, images)
+├── templates/          # HTML templates
+├── uploads/           # Temporary storage for uploaded images
+└── requirements.txt    # Python dependencies
+```
+
+## Usage
+
+1. Start the application:
+```bash
+python main2.py
+```
+
+2. Open your web browser and navigate to:
+```
+http://localhost:5000
+```
+
+3. Upload an MRI scan image through the web interface
+
+4. The system will:
+   - Detect any tumors in the image
+   - Classify the tumor type
+   - Generate a 3D visualization
+   - Provide detailed information about the tumor's location and potential impact
+
+## Demonstration
+
+[Add your demonstration video link here]
 
 ## Technical Details
-This application uses:
-- Three.js for 3D rendering
-- GSAP for animations
-- GLTFLoader for loading 3D models
 
-## Notes
-- The brain model will be automatically loaded after tumor coordinates are submitted
-- If the model fails to load, a simple placeholder brain will be displayed
-- The "Change Tumor Location" button allows you to update coordinates during the session 
+The system uses:
+- Flask for the web framework
+- YOLOv8 for tumor detection
+- Three.js for 3D visualization
+- OpenCV for image processing
+- NumPy for numerical computations
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- YOLOv8 team for the detection model
+- Three.js community for 3D visualization tools
+- Medical imaging community for dataset and research
+
+## Contact
+
+[Your Name] - [Your Email]
+
+Project Link: [https://github.com/yourusername/your-repo-name] 
