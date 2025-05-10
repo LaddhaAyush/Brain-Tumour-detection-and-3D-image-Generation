@@ -25,7 +25,7 @@ def parse_json(json_string):
     return json_string
 
 # Load YOLOv8 model
-model = YOLO('models/best.pt')
+model = YOLO('models/best.pt', weights_only=False)
 
 # Class labels
 class_labels = {0: 'glioma', 1: 'meningioma', 2: 'notumor', 3: 'pituitary'}
