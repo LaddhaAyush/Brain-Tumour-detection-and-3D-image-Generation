@@ -35,7 +35,7 @@ from ultralytics.nn.modules.block import C2f
 from ultralytics.nn.modules.head import Detect
 from ultralytics.nn.tasks import DetectionModel
 
-torch.serialization.add_safe_globals([Conv, C2f, Detect, DetectionModel,Sequential,Linear])
+torch.serialization.add_safe_globals([Conv, C2f, Detect, DetectionModel,Sequential])
 
 
 # Load YOLOv8 model
