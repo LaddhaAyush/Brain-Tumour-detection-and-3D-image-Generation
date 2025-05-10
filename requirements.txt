@@ -42,15 +42,14 @@ networkx==2.8.4
 numpy==1.23.5
 opencv-python==4.6.0.66
 opt_einsum==3.3.0
-optree==0.11.0
+
 packaging==23.0
 pandas==1.5.3
 pillow==9.3.0
 protobuf==3.20.3
 psutil==5.9.4
 py-cpuinfo==9.0.0
-pydantic==1.10.9
-pydantic_core==2.0.2
+
 Pygments==2.13.0
 pyparsing==3.0.9
 python-dateutil==2.8.2
@@ -76,7 +75,7 @@ threadpoolctl==3.1.0
 torch==1.13.1
 torchvision==0.14.1
 tqdm==4.64.1
-typing_extensions==4.4.0
+
 tzdata==2023.3
 ultralytics==8.0.40
 ultralytics-thop==2.0.14
