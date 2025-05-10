@@ -29,13 +29,20 @@ from ultralytics.nn.tasks import DetectionModel
 
 # Add DetectionModel to torch's safe globals
 # torch.serialization.add_safe_globals({'ultralytics.nn.tasks.DetectionModel': DetectionModel})
-from torch.nn import Sequential
+import torch.nn.modules.conv
 from ultralytics.nn.modules.conv import Conv
 from ultralytics.nn.modules.block import C2f
 from ultralytics.nn.modules.head import Detect
-from ultralytics.nn.tasks import DetectionModel
 
-torch.serialization.add_safe_globals([Conv, C2f, Detect, DetectionModel,Sequential])
+# Allowlist all necessary classes for model loading
+torch.serialization.add_safe_globals([
+    torch.nn.modules.conv.Conv2d,  # standard PyTorch Conv2d
+    Conv,                          # Ultralytics Conv layer
+    C2f,                           # Common YOLO block
+    Detect,                        # YOLO detection head
+    DetectionModel                 # YOLOv8 model architecture
+])
+
 
 
 # Load YOLOv8 model
