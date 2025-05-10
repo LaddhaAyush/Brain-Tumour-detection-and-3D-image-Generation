@@ -24,6 +24,11 @@ def parse_json(json_string):
         return json.loads(json_string)
     return json_string
 
+import torch
+from ultralytics.nn.tasks import DetectionModel
+
+# Add DetectionModel to torch's safe globals
+torch.serialization.add_safe_globals({'ultralytics.nn.tasks.DetectionModel': DetectionModel})
 # Load YOLOv8 model
 model = YOLO('models/best.pt')
 # Class labels
