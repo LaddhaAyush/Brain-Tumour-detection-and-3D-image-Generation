@@ -13,7 +13,7 @@ exceptiongroup==1.0.3
 fastapi==0.95.2
 filelock==3.7.1
 Flask==2.2.3
-flatbuffers==22.12.0
+flatbuffers==22.11.23
 fonttools==4.28.5
 fsspec==2023.6.0
 gast==0.5.3
