@@ -29,7 +29,10 @@ from ultralytics.nn.tasks import DetectionModel
 
 # Add DetectionModel to torch's safe globals
 # torch.serialization.add_safe_globals({'ultralytics.nn.tasks.DetectionModel': DetectionModel})
-torch.serialization.add_safe_globals([DetectionModel])
+from torch.nn import Sequential
+
+# Allowlist both trusted classes
+torch.serialization.add_safe_globals([DetectionModel, Sequential])
 # Load YOLOv8 model
 model = YOLO('models/best.pt')
 # Class labels
