@@ -46,7 +46,7 @@ torch.serialization.add_safe_globals([
 
 
 # Load YOLOv8 model
-model = YOLO('models/best.pt', task='detect')  # Add task if needed
+model = YOLO('models/best.pt', task='detect',, weights_only=False)  # Add task if needed
 model(torch.load('models/best.pt', map_location='cpu', weights_only=False)) 
 # Class labels
 class_labels = {0: 'glioma', 1: 'meningioma', 2: 'notumor', 3: 'pituitary'}
