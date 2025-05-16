@@ -30,9 +30,10 @@ from ultralytics.nn.tasks import DetectionModel
 # Add DetectionModel to torch's safe globals
 # torch.serialization.add_safe_globals({'ultralytics.nn.tasks.DetectionModel': DetectionModel})
 import torch.nn.modules.conv
-from ultralytics.nn.modules.conv import Conv
-from ultralytics.nn.modules.block import C2f
+# from ultralytics.nn.modules.conv import Conv
+# from ultralytics.nn.modules.block import C2f
 from ultralytics.nn.modules.head import Detect
+from torch.nn.modules.container import Sequential
 
 # Allowlist all necessary classes for model loading
 # ✅ Step 1: Allowlist the Sequential container (this prevents unpickling error)
