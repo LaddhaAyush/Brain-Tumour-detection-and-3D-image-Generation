@@ -35,18 +35,11 @@ from ultralytics.nn.modules.block import C2f
 from ultralytics.nn.modules.head import Detect
 
 # Allowlist all necessary classes for model loading
-torch.serialization.add_safe_globals([
-    torch.nn.modules.conv.Conv2d,  # standard PyTorch Conv2d
-    Conv,                          # Ultralytics Conv layer
-    C2f,                           # Common YOLO block
-    Detect,                        # YOLO detection head
-    DetectionModel                 # YOLOv8 model architecture
-])
+# ✅ Step 1: Allowlist the Sequential container (this prevents unpickling error)
+torch.serialization.add_safe_globals([Sequential])
 
-
-
-# Load YOLOv8 model
-model = YOLO('models/best.pt', task='detect',weights_only=False)  # Add task if needed
+# ✅ Step 2: Load the model as usual
+model = YOLO('models/best.pt') # Add task if needed
 model(torch.load('models/best.pt', map_location='cpu', weights_only=False)) 
 # Class labels
 class_labels = {0: 'glioma', 1: 'meningioma', 2: 'notumor', 3: 'pituitary'}
