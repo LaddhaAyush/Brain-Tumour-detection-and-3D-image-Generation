@@ -872,6 +872,23 @@
                     {% endif %}
                   </ul>
                 </div>
+                
+                <!-- AI Chat Interface -->
+                <h6 class="text-primary mt-4"><i class="fas fa-robot"></i> Chat with Medical AI</h6>
+                <div class="ai-chat-section p-3" style="border-left: 3px solid var(--info); background: rgba(0, 123, 255, 0.05);">
+                  <p>Ask questions about treatments, side effects, or recovery for {{ result }}</p>
+                  <div class="chat-container" style="height: 300px; border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 6px; display: flex; flex-direction: column; background-color: #f8f9fa; margin-top: 10px; overflow: hidden;">
+                    <div class="chat-messages" id="chat-messages" style="flex-grow: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column;">
+                      <div class="message ai-message" style="margin-bottom: 10px; max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; background-color: #e9ecef; color: #212529; align-self: flex-start; border-radius: 12px 12px 12px 0; border-left: 3px solid #0d6efd;">
+                        Hello! I'm your medical AI assistant. How can I help you with information about {{ result }} treatment options?
+                      </div>
+                    </div>
+                    <div class="chat-input" style="display: flex; padding: 8px; border-top: 1px solid rgba(0, 123, 255, 0.2); background-color: #f1f3f5;">
+                      <input type="text" id="chat-input" placeholder="Type your question here..." style="flex-grow: 1; border: 1px solid rgba(0, 123, 255, 0.3); padding: 8px 12px; border-radius: 4px; margin-right: 8px; font-size: 13px;">
+                      <button class="btn btn-primary" id="send-button" style="background-color: #0d6efd; color: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-weight: 600;">Send</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2476,6 +2493,91 @@
             }, 300);
           }, 3000);
         }
+        
+        // AI Chat Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+          const chatInput = document.getElementById('chat-input');
+          const sendButton = document.getElementById('send-button');
+          const chatMessages = document.getElementById('chat-messages');
+          
+          if (chatInput && sendButton && chatMessages) {
+            // Function to add a message to the chat window
+            function addMessage(message, isUser) {
+              const messageDiv = document.createElement('div');
+              messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+              messageDiv.style.marginBottom = '10px';
+              messageDiv.style.maxWidth = '85%';
+              messageDiv.style.padding = '8px 12px';
+              messageDiv.style.borderRadius = '12px';
+              messageDiv.style.fontSize = '13px';
+              messageDiv.style.lineHeight = '1.4';
+              
+              if (isUser) {
+                messageDiv.style.backgroundColor = '#0d6efd';
+                messageDiv.style.color = 'white';
+                messageDiv.style.alignSelf = 'flex-end';
+                messageDiv.style.borderRadius = '12px 12px 0 12px';
+              } else {
+                messageDiv.style.backgroundColor = '#e9ecef';
+                messageDiv.style.color = '#212529';
+                messageDiv.style.alignSelf = 'flex-start';
+                messageDiv.style.borderRadius = '12px 12px 12px 0';
+                messageDiv.style.borderLeft = '3px solid #0d6efd';
+              }
+              
+              messageDiv.textContent = message;
+              chatMessages.appendChild(messageDiv);
+              chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+            }
+            
+            // Function to send a message to the AI and get a response
+            function sendMessage() {
+              const message = chatInput.value.trim();
+              if (message === '') return;
+              
+              // Add user message to chat
+              addMessage(message, true);
+              chatInput.value = '';
+              
+              // Get tumor information
+              const tumorType = document.getElementById('treatmentModalLabel')?.textContent.replace('Treatment Options for ', '') || 'Unknown';
+              
+              // Prepare tumor context for more relevant responses
+              const tumorContext = {
+                tumor_type: tumorType
+              };
+              
+              // Send message to AI
+              fetch('/chat_with_ai', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  message: message,
+                  tumor_context: tumorContext
+                })
+              })
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('AI response not available');
+                }
+                return response.json();
+              })
+              .then(data => {
+                // Add AI response to chat
+                addMessage(data.response, false);
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                
+                // Provide a fallback response if API call fails
+                let fallbackResponse = getFallbackResponse(message, tumorType);
+                addMessage(fallbackResponse, false);
+              });
+            }
+          }
+        });
       });
     </script>
     
@@ -2483,5 +2585,532 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js for growth prediction -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    
+    <!-- AI Chat Functionality -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const chatMessages = document.getElementById('chat-messages');
+        
+        if (chatInput && sendButton && chatMessages) {
+          // Add initial processing indicator
+          let isFirstMessage = true;
+          
+          // Function to add a message to the chat window
+          function addMessage(message, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            messageDiv.style.marginBottom = '10px';
+            messageDiv.style.maxWidth = '85%';
+            messageDiv.style.padding = '8px 12px';
+            messageDiv.style.borderRadius = '12px';
+            messageDiv.style.fontSize = '13px';
+            messageDiv.style.lineHeight = '1.4';
+            
+            if (isUser) {
+              messageDiv.style.backgroundColor = '#0d6efd';
+              messageDiv.style.color = 'white';
+              messageDiv.style.alignSelf = 'flex-end';
+              messageDiv.style.borderRadius = '12px 12px 0 12px';
+            } else {
+              messageDiv.style.backgroundColor = '#e9ecef';
+              messageDiv.style.color = '#212529';
+              messageDiv.style.alignSelf = 'flex-start';
+              messageDiv.style.borderRadius = '12px 12px 12px 0';
+              messageDiv.style.borderLeft = '3px solid #0d6efd';
+            }
+            
+            messageDiv.textContent = message;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+          }
+          
+          // Function to add a "typing" indicator
+          function addTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'message ai-message';
+            typingDiv.style.marginBottom = '10px';
+            typingDiv.style.maxWidth = '85%';
+            typingDiv.style.padding = '8px 12px';
+            typingDiv.style.borderRadius = '12px 12px 12px 0';
+            typingDiv.style.fontSize = '13px';
+            typingDiv.style.lineHeight = '1.4';
+            typingDiv.style.backgroundColor = '#e9ecef';
+            typingDiv.style.color = '#212529';
+            typingDiv.style.alignSelf = 'flex-start';
+            typingDiv.style.borderLeft = '3px solid #0d6efd';
+            typingDiv.textContent = 'Analyzing data...';
+            
+            // Add the animated dots
+            const dotsSpan = document.createElement('span');
+            dotsSpan.className = 'typing-dots';
+            dotsSpan.textContent = '...';
+            typingDiv.appendChild(dotsSpan);
+            
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Add animation for dots
+            let dots = 0;
+            const dotsInterval = setInterval(() => {
+              dots = (dots + 1) % 4;
+              dotsSpan.textContent = '.'.repeat(dots || 1);
+            }, 300);
+            
+            return function removeTypingIndicator() {
+              clearInterval(dotsInterval);
+              const indicator = document.getElementById('typing-indicator');
+              if (indicator) {
+                indicator.remove();
+              }
+            };
+          }
+          
+          // Function to send a message to the AI and get a response
+          function sendMessage() {
+            const message = chatInput.value.trim();
+            if (message === '') return;
+            
+            // Add user message to chat
+            addMessage(message, true);
+            chatInput.value = '';
+            
+            // Show typing indicator
+            const removeTypingIndicator = addTypingIndicator();
+            
+            // Get tumor information from modal title
+            const modalTitle = document.getElementById('treatmentModalLabel');
+            const tumorInfo = modalTitle ? modalTitle.textContent.replace('Treatment Options for ', '').trim() : '';
+            
+            // Extract tumor type and location from the info
+            let tumorType = 'unknown';
+            let location = 'unknown';
+            
+            if (tumorInfo.includes('glioma')) {
+              tumorType = 'glioma';
+            } else if (tumorInfo.includes('meningioma')) {
+              tumorType = 'meningioma';
+            } else if (tumorInfo.includes('pituitary')) {
+              tumorType = 'pituitary';
+            }
+            
+            // Location is harder to determine from just the title, so use defaults
+            if (tumorType === 'glioma') {
+              location = 'cerebral hemisphere';
+            } else if (tumorType === 'meningioma') {
+              location = 'surface of the brain';
+            } else if (tumorType === 'pituitary') {
+              location = 'pituitary fossa';
+            }
+            
+            // Estimate tumor size from any available data
+            // Using default size estimate since we don't have actual measurements here
+            const size = {
+              width: 2.5,
+              height: 2.0,
+              depth: 2.0
+            };
+            
+            // Prepare tumor context for more relevant responses
+            const tumorContext = {
+              tumor_type: tumorType,
+              location: location,
+              size: size
+            };
+            
+            // Add slight random delay to seem more natural (500-1500ms)
+            const responseTime = 500 + Math.random() * 1000;
+            
+            setTimeout(() => {
+              // Send message to AI
+              fetch('/chat_with_ai', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  message: message,
+                  tumor_context: tumorContext
+                })
+              })
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('AI response not available');
+                }
+                return response.json();
+              })
+              .then(data => {
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                // Add AI response to chat
+                addMessage(data.response, false);
+                
+                // If this is the first message exchange, offer suggestions
+                if (isFirstMessage) {
+                  setTimeout(() => {
+                    addSuggestions(tumorType);
+                    isFirstMessage = false;
+                  }, 1000);
+                }
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                // Provide a fallback response if API call fails
+                const fallbackResponse = getFallbackResponse(message, tumorType, location);
+                addMessage(fallbackResponse, false);
+                
+                // If this is the first message exchange, offer suggestions
+                if (isFirstMessage) {
+                  setTimeout(() => {
+                    addSuggestions(tumorType);
+                    isFirstMessage = false;
+                  }, 1000);
+                }
+              });
+            }, responseTime);
+          }
+          
+          // Function to generate fallback responses when API is not available
+          function getFallbackResponse(message, tumorType, location) {
+            message = message.toLowerCase();
+            
+            // If message seems to be about side of brain or location
+            if (message.includes('side') || message.includes('where') || message.includes('location')) {
+              if (tumorType === 'pituitary') {
+                return "Pituitary tumors are located in the center of the brain, at the base of the skull in an area called the sella turcica.";
+              } else if (tumorType === 'glioma') {
+                return "This glioma is located in the brain tissue. Without specific MRI coordinates, I cannot tell you which side of the brain it's on.";
+              } else if (tumorType === 'meningioma') {
+                return "Meningiomas develop on the meninges (the membrane covering the brain). They can occur on either side or in the center.";
+              }
+            }
+            
+            // If message seems to be about the MRI or scan
+            if (message.includes('mri') || message.includes('scan') || message.includes('image')) {
+              return `The MRI scan shows features consistent with a ${tumorType}. For a detailed interpretation, please consult with a radiologist or neurosurgeon.`;
+            }
+            
+            // Simple rule-based responses for common questions
+            if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+              return `Hello! I'm your brain tumor information assistant. I can provide information about ${tumorType} tumors and treatment options. How can I help you?`;
+            }
+            
+            if (message.includes('symptom')) {
+              if (tumorType === 'pituitary') {
+                return "Pituitary tumors commonly cause hormonal imbalances, headaches, and visual problems (particularly loss of peripheral vision) if they press on the optic nerves.";
+              } else if (tumorType === 'glioma') {
+                return "Gliomas typically cause headaches, seizures, and neurological deficits that depend on their location. In the " + location + ", symptoms may include specific focal deficits related to the functions of that region.";
+              } else if (tumorType === 'meningioma') {
+                return "Meningiomas often cause headaches, seizures, and focal neurological deficits depending on their location. They tend to compress rather than infiltrate brain tissue.";
+              }
+            }
+            
+            if (message.includes('treatment') || message.includes('therapy')) {
+              if (tumorType === 'pituitary') {
+                return "Treatment options for pituitary tumors include surgery (often through the nasal passage), medication to control hormone production, and radiation therapy for some cases.";
+              } else if (tumorType === 'glioma') {
+                return "Glioma treatment typically involves surgery, radiation therapy, and chemotherapy. The specific approach depends on the grade, location, and molecular characteristics of the tumor.";
+              } else if (tumorType === 'meningioma') {
+                return "Many meningiomas can be treated with surgery alone. Radiation may be used for incomplete resections or higher-grade tumors. Some small, asymptomatic meningiomas may be monitored without immediate treatment.";
+              }
+            }
+            
+            if (message.includes('prognosis') || message.includes('survival')) {
+              if (tumorType === 'pituitary') {
+                return "Most pituitary tumors have a good prognosis. They're typically benign and treatable, though some may recur and require ongoing management.";
+              } else if (tumorType === 'glioma') {
+                return "Glioma prognosis varies widely depending on the specific type and grade. Lower-grade gliomas generally have better outcomes than higher-grade ones like glioblastoma.";
+              } else if (tumorType === 'meningioma') {
+                return "Most meningiomas have an excellent prognosis, especially grade I tumors that can be completely removed. Higher grade meningiomas may recur and require additional treatment.";
+              }
+            }
+            
+            // Default response for other queries
+            return `I understand you're asking about ${tumorType} tumors. For the most accurate information, please ask specific questions about symptoms, treatment options, or prognosis.`;
+          }
+          
+          // Function to add suggestion buttons
+          function addSuggestions(tumorType) {
+            const suggestionsDiv = document.createElement('div');
+            suggestionsDiv.className = 'suggestions';
+            suggestionsDiv.style.display = 'flex';
+            suggestionsDiv.style.flexWrap = 'wrap';
+            suggestionsDiv.style.gap = '5px';
+            suggestionsDiv.style.marginBottom = '10px';
+            suggestionsDiv.style.alignSelf = 'flex-start';
+            
+            const suggestions = [
+              "What are the side effects of treatment?",
+              "What's the recovery time after surgery?",
+              "Is this tumor malignant?",
+              "What are the symptoms to watch for?"
+            ];
+            
+            // Add tumor-specific questions
+            if (tumorType === 'glioma') {
+              suggestions.push("What's the difference between grades of glioma?");
+            } else if (tumorType === 'meningioma') {
+              suggestions.push("Can meningiomas grow back after treatment?");
+            } else if (tumorType === 'pituitary') {
+              suggestions.push("Will I need hormone replacement therapy?");
+            }
+            
+            suggestions.forEach(suggestion => {
+              const button = document.createElement('button');
+              button.textContent = suggestion;
+              button.className = 'suggestion-btn';
+              button.style.fontSize = '12px';
+              button.style.padding = '5px 10px';
+              button.style.backgroundColor = '#e9ecef';
+              button.style.border = '1px solid #ced4da';
+              button.style.borderRadius = '15px';
+              button.style.cursor = 'pointer';
+              button.style.margin = '2px';
+              button.style.color = '#495057';
+              
+              button.addEventListener('click', function() {
+                chatInput.value = this.textContent;
+                sendMessage();
+              });
+              
+              button.addEventListener('mouseover', function() {
+                this.style.backgroundColor = '#dee2e6';
+              });
+              
+              button.addEventListener('mouseout', function() {
+                this.style.backgroundColor = '#e9ecef';
+              });
+              
+              suggestionsDiv.appendChild(button);
+            });
+            
+            chatMessages.appendChild(suggestionsDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+          
+          // Add event listeners
+          sendButton.addEventListener('click', sendMessage);
+          
+          chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              sendMessage();
+            }
+          });
+        }
+      });
+    </script>
+    
+    <!-- Treatment Simulation Chart -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Growth timeline chart
+        const ctx = document.getElementById('treatmentComparisonChart');
+        
+        if (ctx) {
+          // Get tumor type from result
+          const result = {% if result %}"{{ result }}"{% else %}""{% endif %};
+          let tumorType = 'unknown';
+          
+          if (result.toLowerCase().includes('glioma')) {
+            tumorType = 'glioma';
+          } else if (result.toLowerCase().includes('meningioma')) {
+            tumorType = 'meningioma';
+          } else if (result.toLowerCase().includes('pituitary')) {
+            tumorType = 'pituitary';
+          }
+          
+          // Set different growth rates based on tumor type
+          let naturalGrowthRate = 5; // % increase per month
+          let surgeryEffectiveness = 80; // % removal
+          let radiationEffectiveness = 30; // % reduction over treatment period
+          let chemoEffectiveness = 20; // % reduction over treatment period
+          
+          // Adjust parameters based on tumor type
+          if (tumorType === 'glioma') {
+            naturalGrowthRate = 8;
+            surgeryEffectiveness = 70;
+            radiationEffectiveness = 40;
+            chemoEffectiveness = 30;
+          } else if (tumorType === 'meningioma') {
+            naturalGrowthRate = 3;
+            surgeryEffectiveness = 95;
+            radiationEffectiveness = 25;
+            chemoEffectiveness = 10;
+          } else if (tumorType === 'pituitary') {
+            naturalGrowthRate = 4;
+            surgeryEffectiveness = 85;
+            radiationEffectiveness = 30;
+            chemoEffectiveness = 15;
+          }
+          
+          // Labels for months
+          const months = Array.from({length: 13}, (_, i) => `Month ${i}`);
+          
+          // Calculate growth data - no treatment
+          const naturalGrowth = Array.from({length: 13}, (_, i) => (
+            100 * Math.pow(1 + naturalGrowthRate/100, i)
+          ));
+          
+          // Calculate data for surgery only
+          const surgeryOnly = [100];
+          for (let i = 1; i < 13; i++) {
+            if (i === 1) {
+              // Surgery at month 1
+              surgeryOnly.push(100 - surgeryEffectiveness);
+            } else {
+              // Continue growth after surgery
+              surgeryOnly.push(surgeryOnly[i-1] * (1 + naturalGrowthRate/200));
+            }
+          }
+          
+          // Calculate data for surgery + radiation
+          const surgeryRadiation = [100];
+          for (let i = 1; i < 13; i++) {
+            if (i === 1) {
+              // Surgery at month 1
+              surgeryRadiation.push(100 - surgeryEffectiveness);
+            } else if (i >= 2 && i <= 4) {
+              // Radiation from month 2-4
+              surgeryRadiation.push(surgeryRadiation[i-1] * (1 - radiationEffectiveness/300));
+            } else {
+              // Continued monitoring after treatment
+              surgeryRadiation.push(surgeryRadiation[i-1] * (1 + naturalGrowthRate/300));
+            }
+          }
+          
+          // Calculate data for surgery + radiation + chemo
+          const surgeryRadiationChemo = [100];
+          for (let i = 1; i < 13; i++) {
+            if (i === 1) {
+              // Surgery at month 1
+              surgeryRadiationChemo.push(100 - surgeryEffectiveness);
+            } else if (i >= 2 && i <= 4) {
+              // Radiation from month 2-4
+              surgeryRadiationChemo.push(surgeryRadiationChemo[i-1] * (1 - radiationEffectiveness/300));
+            } else if (i >= 5 && i <= 11) {
+              // Chemo from month 5-11
+              surgeryRadiationChemo.push(surgeryRadiationChemo[i-1] * (1 - chemoEffectiveness/700));
+            } else {
+              // Continued monitoring after treatment
+              surgeryRadiationChemo.push(surgeryRadiationChemo[i-1] * (1 + naturalGrowthRate/400));
+            }
+          }
+          
+          // Create chart
+          const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: months,
+              datasets: [
+                {
+                  label: 'No Treatment',
+                  data: naturalGrowth,
+                  borderColor: 'rgba(231, 76, 60, 1)',
+                  backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                  tension: 0.3,
+                  fill: true
+                },
+                {
+                  label: 'Surgery Only',
+                  data: surgeryOnly,
+                  borderColor: 'rgba(243, 156, 18, 1)',
+                  backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                  tension: 0.3,
+                  fill: true
+                },
+                {
+                  label: 'Surgery + Radiation',
+                  data: surgeryRadiation,
+                  borderColor: 'rgba(52, 152, 219, 1)',
+                  backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                  tension: 0.3,
+                  fill: true
+                },
+                {
+                  label: 'Surgery + Radiation + Chemo',
+                  data: surgeryRadiationChemo,
+                  borderColor: 'rgba(46, 204, 113, 1)',
+                  backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                  tension: 0.3,
+                  fill: true
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: {
+                  min: 0,
+                  max: tumorType === 'glioma' ? 300 : 200,
+                  title: {
+                    display: true,
+                    text: 'Tumor Volume (%)'
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  position: 'bottom'
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
+                    }
+                  }
+                },
+                annotation: {
+                  annotations: {
+                    surgeryLine: {
+                      type: 'line',
+                      xMin: 1,
+                      xMax: 1,
+                      borderColor: 'rgba(0, 0, 0, 0.5)',
+                      borderWidth: 2,
+                      borderDash: [6, 6],
+                      label: {
+                        enabled: true,
+                        content: 'Surgery',
+                        position: 'start'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+      });
+    </script>
+
+    <!-- Growth Prediction Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Show treatment modal when treatment button is clicked
+        const treatmentBtn = document.getElementById('treatmentBtn');
+        if (treatmentBtn) {
+          treatmentBtn.addEventListener('click', function() {
+            const treatmentModal = new bootstrap.Modal(document.getElementById('treatmentModal'));
+            treatmentModal.show();
+          });
+        }
+        
+        // Show growth timeline modal when growth timeline button is clicked
+        const growthBtn = document.getElementById('growthBtn');
+        if (growthBtn) {
+          growthBtn.addEventListener('click', function() {
+            const growthModal = new bootstrap.Modal(document.getElementById('growthModal'));
+            growthModal.show();
+          });
+        }
+      });
+    </script>
   </body>
 </html>

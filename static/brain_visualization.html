@@ -2919,5 +2919,168 @@
           }
       }
   });
+
+  // AI Chat Functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    
+    // Function to add a message to the chat window
+    function addMessage(message, isUser) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+      messageDiv.textContent = message;
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+    }
+    
+    // Function to send a message to the AI and get a response
+    function sendMessage() {
+      const message = chatInput.value.trim();
+      if (message === '') return;
+      
+      // Add user message to chat
+      addMessage(message, true);
+      chatInput.value = '';
+      
+      // Get tumor information from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const encodedTumorType = urlParams.get('tumor_type') || 'unknown';
+      const encodedBrainRegion = urlParams.get('brain_region') || 'unknown';
+      const encodedCoordinates = urlParams.get('coordinates') || null;
+      const encodedImpactData = urlParams.get('impact_data') || null;
+      
+      // Decode the information
+      const tumorType = decodeURIComponent(encodedTumorType);
+      const brainRegion = decodeURIComponent(encodedBrainRegion);
+      let coordinates = null;
+      if (encodedCoordinates) {
+        try {
+          coordinates = JSON.parse(decodeURIComponent(encodedCoordinates));
+        } catch (e) {
+          console.error('Error parsing coordinates:', e);
+        }
+      }
+      
+      // Calculate size from coordinates if available
+      let size = { width: 0, height: 0, depth: 0 };
+      if (coordinates && coordinates.length >= 8) {
+        try {
+          // Calculate width (x), height (y), and depth (z)
+          const width = Math.abs(coordinates[1][0] - coordinates[0][0]);
+          const height = Math.abs(coordinates[2][1] - coordinates[1][1]);
+          const depth = Math.abs(coordinates[4][2] - coordinates[0][2]);
+          
+          // Scale to typical tumor size in cm
+          size = {
+            width: width * 10,  // Convert to cm
+            height: height * 10,
+            depth: depth * 10
+          };
+        } catch (e) {
+          console.error('Error calculating size:', e);
+        }
+      }
+      
+      // Prepare tumor context for more relevant responses
+      const tumorContext = {
+        tumor_type: tumorType,
+        location: brainRegion,
+        size: size
+      };
+      
+      // Send message to AI
+      fetch('/chat_with_ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: message,
+          tumor_context: tumorContext
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('AI response not available');
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Add AI response to chat
+        addMessage(data.response, false);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        
+        // Provide a fallback response if API call fails
+        let fallbackResponse = getFallbackResponse(message, tumorType, brainRegion);
+        addMessage(fallbackResponse, false);
+      });
+    }
+    
+    // Function to generate fallback responses when API is not available
+    function getFallbackResponse(message, tumorType, brainRegion) {
+      message = message.toLowerCase();
+      
+      // Simple rule-based responses
+      if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+        return `Hello! I'm your brain tumor information assistant. I can provide information about ${tumorType} tumors in the ${brainRegion}. How can I help you?`;
+      }
+      
+      if (message.includes('symptom')) {
+        if (tumorType.includes('pituitary')) {
+          return "Pituitary tumors commonly cause hormonal imbalances, headaches, and visual problems (particularly loss of peripheral vision) if they press on the optic nerves.";
+        } else if (tumorType.includes('glioma')) {
+          return "Gliomas typically cause headaches, seizures, and neurological deficits that depend on their location. In the " + brainRegion + ", symptoms may include specific focal deficits related to the functions of that region.";
+        } else if (tumorType.includes('meningioma')) {
+          return "Meningiomas often cause headaches, seizures, and focal neurological deficits depending on their location. They tend to compress rather than infiltrate brain tissue.";
+        } else {
+          return "Brain tumor symptoms vary greatly depending on the tumor's location and size. Common symptoms include headaches, seizures, and neurological deficits specific to the affected brain region.";
+        }
+      }
+      
+      if (message.includes('treatment') || message.includes('therapy')) {
+        if (tumorType.includes('pituitary')) {
+          return "Treatment options for pituitary tumors include surgery (often through the nasal passage), medication to control hormone production, and radiation therapy for some cases.";
+        } else if (tumorType.includes('glioma')) {
+          return "Glioma treatment typically involves surgery, radiation therapy, and chemotherapy. The specific approach depends on the grade, location, and molecular characteristics of the tumor.";
+        } else if (tumorType.includes('meningioma')) {
+          return "Many meningiomas can be treated with surgery alone. Radiation may be used for incomplete resections or higher-grade tumors. Some small, asymptomatic meningiomas may be monitored without immediate treatment.";
+        } else {
+          return "Brain tumor treatment options generally include surgery, radiation therapy, and in some cases, chemotherapy or targeted therapies. The approach is tailored to the specific tumor type and location.";
+        }
+      }
+      
+      if (message.includes('prognosis') || message.includes('survival')) {
+        if (tumorType.includes('pituitary')) {
+          return "Most pituitary tumors have a good prognosis. They're typically benign and treatable, though some may recur and require ongoing management.";
+        } else if (tumorType.includes('glioma')) {
+          return "Glioma prognosis varies widely depending on the specific type and grade. Lower-grade gliomas generally have better outcomes than higher-grade ones like glioblastoma.";
+        } else if (tumorType.includes('meningioma')) {
+          return "Most meningiomas have an excellent prognosis, especially grade I tumors that can be completely removed. Higher grade meningiomas may recur and require additional treatment.";
+        } else {
+          return "Brain tumor prognosis depends on many factors including the specific tumor type, grade, location, and treatment response. Your healthcare team can provide the most accurate information for your specific case.";
+        }
+      }
+      
+      // Default response for other queries
+      return `I understand you're asking about ${message}. For the most accurate information about ${tumorType} tumors in the ${brainRegion}, please consult with your healthcare providers. They can provide personalized guidance based on your specific medical situation.`;
+    }
+    
+    // Add event listeners
+    if (sendButton) {
+      sendButton.addEventListener('click', sendMessage);
+    }
+    
+    if (chatInput) {
+      chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+    }
+  });
 </body>
 </html> 

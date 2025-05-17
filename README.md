@@ -1,108 +1,109 @@
-# Brain Tumor Detection and 3D Visualization System
+# Brain Tumor Detection & Analysis System
 
-This project is an advanced brain tumor detection and visualization system that uses deep learning to detect brain tumors from MRI scans and provides an interactive 3D visualization of the detected tumors in a brain model. The system can classify tumors into different types (glioma, meningioma, pituitary) and provides detailed information about their location and potential impact.
+This application is designed to detect and analyze brain tumors from MRI scans, providing comprehensive information, 3D visualization, and an AI-powered chat interface for medical queries.
 
 ## Features
 
-- Brain tumor detection using YOLOv8
-- Classification of tumors into different types
-- Interactive 3D visualization of the brain with tumor locations
-- Anatomically accurate tumor placement
-- Detailed impact analysis based on tumor type and location
-- Web-based interface for easy interaction
-- Support for multiple tumor types:
-  - Glioma
-  - Meningioma
-  - Pituitary
-  - No tumor detection
+- Brain tumor detection and classification using YOLOv8
+- 3D visualization of tumor location in the brain
+- Detailed information about the tumor type, location, and potential impacts
+- AI-powered chat assistant with real-time web search integration
+- Mixtral/Grok LLM integration for enhanced responses
 
-## Prerequisites
+## Setup Instructions
 
-- Python 3.8 or higher
-- pip (Python package installer)
-- Git (for cloning the repository)
+### Prerequisites
 
-## Installation
+- Python 3.8+
+- Flask
+- OpenCV
+- NumPy
+- Ultralytics (YOLOv8)
+- API keys for web search and Mixtral/Grok (optional but recommended)
+
+### Installation
 
 1. Clone the repository:
-```bash
-git clone [your-repository-url]
-cd [repository-name]
-```
+   ```
+   git clone https://github.com/yourusername/brain-tumor-detection.git
+   cd brain-tumor-detection
+   ```
 
-2. Create and activate a virtual environment:
+2. Install requirements:
+   ```
+   pip install -r requirements.txt
+   ```
 
-For Windows:
-```bash
-python -m venv myenv
-myenv\Scripts\activate
-```
+3. Configure API keys:
+   - Open `ai_bot.py` and `main2.py`
+   - Replace the placeholder API key values with your actual API keys
+   - Save the files
 
-For Linux/Mac:
-```bash
-python3 -m venv myenv
-source myenv/bin/activate
-```
+4. Start the application:
+   ```
+   python main2.py
+   ```
 
-3. Install the required packages:
-```bash
-pip install -r requirements.txt
-```
+5. Open the application in your browser at `http://localhost:5000`
 
-## Project Structure
+### API Keys Setup
 
-```
-├── main2.py              # Main application file
-├── fibonacciNet.py       # Neural network implementation
-├── combine.py           # Utility functions
-├── models/              # Contains the trained model
-│   └── best.pt         # YOLOv8 model weights
-├── static/             # Static files (CSS, JS, images)
-├── templates/          # HTML templates
-├── uploads/           # Temporary storage for uploaded images
-└── requirements.txt    # Python dependencies
-```
+#### Web Search API (choose one)
+
+1. **Google Custom Search API (recommended)**
+   - Create a Custom Search Engine at [https://cse.google.com/cse/](https://cse.google.com/cse/)
+   - Get API key at [https://developers.google.com/custom-search/v1/overview](https://developers.google.com/custom-search/v1/overview)
+   - Update the values in `ai_bot.py` and `main2.py`:
+     ```python
+     os.environ.setdefault("SEARCH_API_KEY", "your_google_api_key_here")
+     os.environ.setdefault("SEARCH_ENGINE_ID", "your_search_engine_id_here") 
+     os.environ.setdefault("SEARCH_API_TYPE", "google")
+     ```
+
+2. **Bing Search API**
+   - Get API key at [https://portal.azure.com/#create/microsoft.bingsearch](https://portal.azure.com/#create/microsoft.bingsearch)
+   - Update the values in `ai_bot.py` and `main2.py`:
+     ```python
+     os.environ.setdefault("SEARCH_API_KEY", "your_bing_api_key_here")
+     os.environ.setdefault("SEARCH_API_TYPE", "bing")
+     ```
+
+3. **SerpAPI**
+   - Get API key at [https://serpapi.com/](https://serpapi.com/)
+   - Update the values in `ai_bot.py` and `main2.py`:
+     ```python
+     os.environ.setdefault("SEARCH_API_KEY", "your_serpapi_key_here")
+     os.environ.setdefault("SEARCH_API_TYPE", "serpapi")
+     ```
+
+#### Mixtral/Grok API (Optional)
+- Get API key from Grok/xAI
+- Update the value in `ai_bot.py` and `main2.py`:
+  ```python
+  os.environ.setdefault("GROK_API_KEY", "your_grok_api_key_here")
+  ```
 
 ## Usage
 
-1. Start the application:
-```bash
-python main2.py
-```
+1. Upload an MRI scan image on the home page
+2. View detection results, including tumor type and confidence level
+3. Explore the 3D visualization by clicking "View in 3D"
+4. Access detailed tumor information on the dashboard
+5. Use the AI chat feature to ask questions about the detected tumor
 
-2. Open your web browser and navigate to:
-```
-http://localhost:5000
-```
+## AI Chat Features
 
-3. Upload an MRI scan image through the web interface
+The AI chat assistant provides information about:
+- Tumor types, locations, and sizes
+- Common symptoms and treatment options
+- Prognosis and research developments
+- References to medical sources for further reading
 
-4. The system will:
-   - Detect any tumors in the image
-   - Classify the tumor type
-   - Generate a 3D visualization
-   - Provide detailed information about the tumor's location and potential impact
-
-## Demonstration
-
-[Add your demonstration video link here]
-
-## Technical Details
-
-The system uses:
-- Flask for the web framework
-- YOLOv8 for tumor detection
-- Three.js for 3D visualization
-- OpenCV for image processing
-- NumPy for numerical computations
+The AI bot performs real-time web searches for the most up-to-date information and, if configured, uses the Mixtral LLM to enhance response quality.
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 

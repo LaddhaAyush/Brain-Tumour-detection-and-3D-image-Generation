@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_from_directory, redirect, url_for
+from flask import Flask, render_template, request, send_from_directory, redirect, url_for, jsonify
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -6,6 +6,25 @@ import os
 from PIL import Image
 import json
 import urllib.parse
+import requests
+
+# Hard-coded environment variables instead of using dotenv
+os.environ.setdefault("SEARCH_API_KEY", "AIzaSyBhttY-1N20nwqjYS9GUVqxCCKX3wRzBQw")
+os.environ.setdefault("SEARCH_ENGINE_ID", "AIzaSyCE3sYZVwh5Wtad0TL98uZhbWT-MmdVfqA") 
+os.environ.setdefault("SEARCH_API_TYPE", "google")
+os.environ.setdefault("GROK_API_KEY", "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")
+os.environ.setdefault("FLASK_APP", "main2.py")
+os.environ.setdefault("FLASK_ENV", "development")
+os.environ.setdefault("DEBUG", "True")
+
+# Try to import the AI bot, but handle potential import errors gracefully
+try:
+    from ai_bot import BrainTumorAIBot
+    has_ai_bot = True
+    print("Successfully imported BrainTumorAIBot")
+except ImportError as e:
+    print(f"Error importing BrainTumorAIBot: {e}")
+    has_ai_bot = False
 
 app = Flask(__name__)
 
@@ -30,6 +49,8 @@ model = YOLO('models/best.pt')
 # Class labels
 class_labels = {0: 'glioma', 1: 'meningioma', 2: 'notumor', 3: 'pituitary'}
 
+# Initialize AI bot if available
+ai_bot = BrainTumorAIBot() if has_ai_bot else None
 
 def generate_3d_coordinates(box, image_dimensions, tumor_type=None):
     """Generate 3D coordinates from 2D bounding box and tumor type"""
@@ -290,153 +311,46 @@ def get_brain_region(x, y, z, tumor_type):
 
 
 def calculate_impact_data(tumor_type, brain_region, width, height, depth):
-    """Calculate the impact of the tumor based on its type, location, and size"""
-    impact_data = {
-        "impact_severity": "medium",
-        "affected_functions": [],
-        "potential_symptoms": [],
-        "proximity_risks": []
-    }
-    
-    # Calculate tumor volume (simplified)
-    tumor_volume = width * height * depth
-    
-    # Set impact severity based on tumor type
-    if tumor_type:
-        if 'glioma' in tumor_type.lower():
-            impact_data["impact_severity"] = "high"
-        elif 'meningioma' in tumor_type.lower():
-            impact_data["impact_severity"] = "medium"
-        elif 'pituitary' in tumor_type.lower():
-            impact_data["impact_severity"] = "low"
-    
-    # Adjust severity based on size
-    if tumor_volume > 0.02:  # Large tumor
-        if impact_data["impact_severity"] == "medium":
-            impact_data["impact_severity"] = "high"
-        impact_data["proximity_risks"].append("Mass effect due to large tumor size")
-    
-    # Add affected functions and symptoms based on brain region
-    if "Frontal Lobe" in brain_region:
-        impact_data["affected_functions"].extend(["Executive Function", "Motor Control", "Personality"])
-        impact_data["potential_symptoms"].extend([
-            "Changes in personality or behavior",
-            "Difficulty with planning and organization",
-            "Impaired judgment",
-            "Weakness on opposite side of body"
-        ])
-    
-    elif "Parietal Lobe" in brain_region:
-        impact_data["affected_functions"].extend(["Sensory Processing", "Spatial Awareness"])
-        impact_data["potential_symptoms"].extend([
-            "Impaired sense of touch",
-            "Difficulty with spatial orientation",
-            "Problems with reading or writing",
-            "Left-right confusion"
-        ])
-    
-    elif "Temporal Lobe" in brain_region:
-        if "Left" in brain_region:
-            impact_data["affected_functions"].extend(["Language Comprehension", "Memory", "Auditory Processing"])
-            impact_data["potential_symptoms"].extend([
-                "Language comprehension difficulties",
-                "Memory problems, particularly verbal memory",
-                "Hearing disturbances"
-            ])
+    """Calculate impact data using AI instead of hardcoded values"""
+    try:
+        # Only use AI if available
+        if has_ai_bot and ai_bot:
+            # Get AI-generated information
+            response = ai_bot.generate_response(
+                tumor_type=tumor_type,
+                location=brain_region,
+                size={'width': width, 'height': height, 'depth': depth}
+            )
+            
+            # Parse the AI response to get impact data
+            impact_data = {
+                'severity': 'Moderate',  # Default value
+                'potential_effects': response['ai_response'],
+                'treatment_options': response.get('treatments', {}),
+                'symptoms': response.get('symptoms', {}),
+                'sources': response.get('sources', [])
+            }
+            
+            return impact_data
         else:
-            impact_data["affected_functions"].extend(["Visual Memory", "Emotion", "Auditory Processing"])
-            impact_data["potential_symptoms"].extend([
-                "Difficulty recognizing faces or objects",
-                "Memory problems",
-                "Emotional instability"
-            ])
-    
-    elif "Occipital Lobe" in brain_region:
-        impact_data["affected_functions"].extend(["Visual Processing"])
-        impact_data["potential_symptoms"].extend([
-            "Visual field defects",
-            "Visual hallucinations",
-            "Difficulty recognizing colors",
-            "Problems with reading"
-        ])
-    
-    elif "Cerebellum" in brain_region:
-        impact_data["affected_functions"].extend(["Movement Coordination", "Balance", "Motor Learning"])
-        impact_data["potential_symptoms"].extend([
-            "Poor balance and coordination",
-            "Unsteady gait (ataxia)",
-            "Slurred speech (dysarthria)",
-            "Difficulty with fine motor tasks"
-        ])
-    
-    elif "Brain Stem" in brain_region:
-        impact_data["affected_functions"].extend(["Vital Functions", "Cranial Nerve Function"])
-        impact_data["potential_symptoms"].extend([
-            "Cranial nerve deficits",
-            "Difficulty swallowing or speaking",
-            "Problems with respiratory control",
-            "Sensory or motor deficits"
-        ])
-        impact_data["impact_severity"] = "high"  # Brain stem tumors are always high impact
-    
-    elif "Pituitary" in brain_region:
-        impact_data["affected_functions"].extend(["Hormone Regulation", "Visual Pathways"])
-        impact_data["potential_symptoms"].extend([
-            "Hormonal imbalances",
-            "Visual field defects (bitemporal hemianopia)",
-            "Headaches",
-            "Fatigue or weakness"
-        ])
-    
-    elif "Corpus Callosum" in brain_region:
-        impact_data["affected_functions"].extend(["Interhemispheric Communication"])
-        impact_data["potential_symptoms"].extend([
-            "Disconnection syndrome",
-            "Difficulty with bimanual coordination",
-            "Cognitive processing difficulties"
-        ])
-    
-    elif "Deep Brain Structure" in brain_region:
-        impact_data["affected_functions"].extend(["Movement Control", "Sensation", "Cognition"])
-        impact_data["potential_symptoms"].extend([
-            "Movement disorders",
-            "Sensory disturbances",
-            "Cognitive changes"
-        ])
-    
-    # Add specific glioma impacts (if applicable)
-    if tumor_type and 'glioma' in tumor_type.lower():
-        impact_data["proximity_risks"].append("Infiltration of surrounding tissue")
-        impact_data["proximity_risks"].append("Disruption of white matter tracts")
-        
-        # Add additional symptoms not directly tied to location
-        if "Seizures" not in impact_data["potential_symptoms"]:
-            impact_data["potential_symptoms"].append("Seizures")
-        if "Headaches" not in impact_data["potential_symptoms"]:
-            impact_data["potential_symptoms"].append("Headaches")
-        if "Cognitive decline" not in impact_data["potential_symptoms"]:
-            impact_data["potential_symptoms"].append("Cognitive decline")
-    
-    # Add specific meningioma impacts (if applicable)
-    elif tumor_type and 'meningioma' in tumor_type.lower():
-        impact_data["proximity_risks"].append("Compression of adjacent brain tissue")
-        
-        # Add additional symptoms not directly tied to location
-        if "Headaches" not in impact_data["potential_symptoms"]:
-            impact_data["potential_symptoms"].append("Headaches")
-    
-    # Add specific pituitary impacts (if applicable)
-    elif tumor_type and 'pituitary' in tumor_type.lower():
-        impact_data["proximity_risks"].append("Compression of optic chiasm")
-        impact_data["proximity_risks"].append("Disruption of hormone production")
-        
-        # Add additional symptoms not directly tied to location
-        if "Hormonal imbalances" not in impact_data["potential_symptoms"]:
-            impact_data["potential_symptoms"].append("Hormonal imbalances")
-        if "Visual field defects" not in impact_data["potential_symptoms"]:
-            impact_data["potential_symptoms"].append("Visual field defects")
-    
-    return impact_data
+            # Fallback to basic impact data if AI is not available
+            return {
+                'severity': 'Moderate',
+                'potential_effects': f'A {tumor_type} tumor in the {brain_region} region may affect various functions depending on its size and exact location. Please consult a medical professional for specific information.',
+                'treatment_options': {},
+                'symptoms': {},
+                'sources': []
+            }
+    except Exception as e:
+        print(f"Error getting AI impact data: {e}")
+        # Fallback to basic impact data if AI fails
+        return {
+            'severity': 'Unknown',
+            'potential_effects': 'Unable to generate impact data',
+            'treatment_options': {},
+            'symptoms': {},
+            'sources': []
+        }
 
 
 def format_3d_coordinates(coordinates):
@@ -536,8 +450,15 @@ def visualize_brain(session_id):
         with open(session_file, 'r') as f:
             session_data = json.load(f)
             
-        coordinates_3d = session_data.get('coordinates_3d')
         tumor_type = session_data.get('tumor_type', 'unknown')
+        
+        # If no tumor is detected, redirect to a message page
+        if tumor_type == "notumor":
+            return render_template('no_tumor.html', 
+                                 message="No tumor detected in the scan. The brain appears normal.",
+                                 confidence=f"{session_data.get('confidence', 0) * 100:.2f}%")
+            
+        coordinates_3d = session_data.get('coordinates_3d')
         brain_region = session_data.get('brain_region', 'unknown region')
         impact_data = session_data.get('impact_data', {})
         
@@ -556,9 +477,232 @@ def visualize_brain(session_id):
     except Exception as e:
         return f"Error: {str(e)}", 500
 
+@app.route('/dashboard/<session_id>')
+def tumor_dashboard(session_id):
+    """Route to display the tumor information dashboard"""
+    try:
+        # Load coordinates from session file
+        session_file = os.path.join(app.config['UPLOAD_FOLDER'], f'session_{session_id}.json')
+        
+        if not os.path.exists(session_file):
+            return "Session expired or invalid", 404
+            
+        with open(session_file, 'r') as f:
+            session_data = json.load(f)
+            
+        tumor_type = session_data.get('tumor_type', 'unknown')
+        brain_region = session_data.get('brain_region', 'unknown region')
+        coordinates_3d = session_data.get('coordinates_3d')
+        confidence = session_data.get('confidence', 0)
+        
+        # Calculate tumor size
+        if coordinates_3d:
+            # Calculate width, height, depth from 3D coordinates
+            width = height = depth = 0
+            try:
+                # Front face coordinates
+                width = abs(coordinates_3d[1][0] - coordinates_3d[0][0])
+                height = abs(coordinates_3d[2][1] - coordinates_3d[1][1])
+                # Depth (front to back)
+                depth = abs(coordinates_3d[4][2] - coordinates_3d[0][2])
+            except (IndexError, TypeError):
+                # Default values if calculation fails
+                width = height = depth = 0.1
+                
+            # Scale to centimeters (assuming coordinates are normalized)
+            size = {
+                'width': width * 10,  # Convert to cm
+                'height': height * 10,
+                'depth': depth * 10
+            }
+        else:
+            size = {'width': 0, 'height': 0, 'depth': 0}
+            
+        # Encode parameters for URL
+        params = {
+            'tumor_type': tumor_type,
+            'location': brain_region,
+            'size': json.dumps(size),
+            'confidence': f"{confidence * 100:.2f}%",
+            'session_id': session_id
+        }
+        query_string = '&'.join([f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items()])
+            
+        return render_template('tumor_dashboard.html', **params)
+        
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
 @app.route('/uploads/<filename>')
 def get_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/get_tumor_info', methods=['POST'])
+def get_tumor_info():
+    """Get AI-generated information about the detected tumor"""
+    data = request.json
+    tumor_type = data.get('tumor_type')
+    location = data.get('location')
+    size = data.get('size', {})
+    
+    try:
+        # Only use AI if available
+        if has_ai_bot and ai_bot:
+            # Get comprehensive information from AI
+            response = ai_bot.generate_response(
+                tumor_type=tumor_type,
+                location=location,
+                size=size
+            )
+            
+            # Get specific treatment options
+            treatments = ai_bot.get_treatment_options(tumor_type)
+            
+            # Get specific symptoms
+            symptoms = ai_bot.get_symptoms(tumor_type, location)
+            
+            # Combine all information
+            complete_response = {
+                **response,
+                'treatments': treatments,
+                'symptoms': symptoms
+            }
+            
+            return jsonify(complete_response)
+        else:
+            # Fallback if AI is not available
+            return jsonify({
+                'tumor_type': tumor_type,
+                'location': location,
+                'size': size,
+                'ai_response': f"Information about {tumor_type} tumors in the {location} region is not available. Please consult medical literature or healthcare professionals for detailed information.",
+                'treatments': {},
+                'symptoms': {},
+                'sources': []
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/chat_with_ai', methods=['POST'])
+def chat_with_ai():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({'error': 'Session ID is required'}), 400
+            
+        # Load session data
+        session_file = os.path.join(app.config['UPLOAD_FOLDER'], f'session_{session_id}.json')
+        if not os.path.exists(session_file):
+            return jsonify({'error': 'Session not found'}), 404
+            
+        with open(session_file, 'r') as f:
+            session_data = json.load(f)
+            
+        # Get tumor context from session data
+        tumor_context = {
+            'type': session_data.get('tumor_type'),
+            'location': session_data.get('location'),
+            'size': session_data.get('size')
+        }
+        
+        # Initialize AI bot and get response
+        bot = BrainTumorAIBot()
+        response = bot.chat(user_message, tumor_context)
+        
+        return jsonify({
+            'response': response,
+            'status': 'success'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+@app.route('/visualization_data', methods=['GET'])
+def get_visualization_data():
+    """Get data for visualizations"""
+    if not has_ai_bot or not ai_bot:
+        return jsonify({
+            'error': "Visualization data is currently unavailable."
+        }), 404
+    
+    tumor_type = request.args.get('tumor_type', 'glioma')
+    
+    try:
+        # Get visualization data from AI
+        data = ai_bot.generate_visualization_data(tumor_type)
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error getting visualization data: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+def call_mixtral(prompt: str) -> str:
+    """
+    Call the Grok Mixtral API to generate an enhanced response.
+    
+    Args:
+        prompt: The prompt to send to the Mixtral model
+        
+    Returns:
+        The generated text response from Mixtral
+    """
+    try:
+        # Get API key from environment variable
+        api_key = os.getenv("GROK_API_KEY")
+        
+        if not api_key:
+            print("Warning: No Grok API key found in environment variables")
+            return ""
+            
+        # API endpoint
+        url = "https://api.grok.com/v1/mixtral/generate"
+        
+        # Headers with authentication
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+        
+        # Request data
+        data = {
+            "prompt": prompt,
+            "max_tokens": 750,
+            "temperature": 0.7,
+            "top_p": 0.95
+        }
+        
+        # Send request with timeout
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        
+        # Check if request was successful
+        response.raise_for_status()
+        
+        # Parse response
+        result = response.json()
+        
+        # Extract and return the generated text
+        if "choices" in result and len(result["choices"]) > 0:
+            return result["choices"][0]["text"]
+        else:
+            print("Warning: Unexpected response format from Mixtral API")
+            return ""
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling Mixtral API: {str(e)}")
+        return ""
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Mixtral API response: {str(e)}")
+        return ""
+    except Exception as e:
+        print(f"Unexpected error calling Mixtral: {str(e)}")
+        return ""
 
 if __name__ == '__main__':
     app.run(debug=True)

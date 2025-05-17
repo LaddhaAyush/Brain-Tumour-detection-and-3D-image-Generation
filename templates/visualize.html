@@ -1,0 +1,134 @@
+<div class="info-panel">
+    <h2>Tumor Information</h2>
+    <div id="tumor-details">
+        <p><strong>Type:</strong> <span id="tumor-type"></span></p>
+        <p><strong>Location:</strong> <span id="tumor-location"></span></p>
+        <p><strong>Size:</strong> <span id="tumor-size"></span></p>
+    </div>
+    
+    <div class="ai-info">
+        <h3>AI Analysis</h3>
+        <div id="ai-response">
+            <div class="loading">Loading AI analysis...</div>
+        </div>
+        
+        <div class="symptoms-section">
+            <h4>Symptoms</h4>
+            <div id="symptoms-list"></div>
+        </div>
+        
+        <div class="treatments-section">
+            <h4>Treatment Options</h4>
+            <div id="treatments-list"></div>
+        </div>
+        
+        <div class="sources-section">
+            <h4>Information Sources</h4>
+            <div id="sources-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateTumorInfo(tumorData) {
+    // Update basic tumor information
+    document.getElementById('tumor-type').textContent = tumorData.tumor_type;
+    document.getElementById('tumor-location').textContent = tumorData.location;
+    document.getElementById('tumor-size').textContent = 
+        `${tumorData.size.width.toFixed(2)} x ${tumorData.size.height.toFixed(2)} x ${tumorData.size.depth.toFixed(2)} cm`;
+    
+    // Fetch AI-generated information
+    fetch('/get_tumor_info', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tumorData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Update AI response
+        const aiResponse = document.getElementById('ai-response');
+        aiResponse.innerHTML = `<div class="ai-text">${data.ai_response}</div>`;
+        
+        // Update symptoms
+        const symptomsList = document.getElementById('symptoms-list');
+        symptomsList.innerHTML = Object.entries(data.symptoms)
+            .map(([category, symptoms]) => `
+                <div class="symptom-category">
+                    <h5>${category}</h5>
+                    <ul>
+                        ${symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        
+        // Update treatments
+        const treatmentsList = document.getElementById('treatments-list');
+        treatmentsList.innerHTML = Object.entries(data.treatments)
+            .map(([category, treatment]) => `
+                <div class="treatment-category">
+                    <h5>${category}</h5>
+                    <p>${treatment}</p>
+                </div>
+            `).join('');
+        
+        // Update sources
+        const sourcesList = document.getElementById('sources-list');
+        sourcesList.innerHTML = data.sources
+            .map(source => `<a href="${source}" target="_blank">${source}</a>`)
+            .join('<br>');
+    })
+    .catch(error => {
+        console.error('Error fetching AI information:', error);
+        document.getElementById('ai-response').innerHTML = 
+            '<div class="error">Error loading AI analysis. Please try again later.</div>';
+    });
+}
+</script>
+
+<style>
+.ai-info {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.error {
+    color: #dc3545;
+    padding: 10px;
+    background: #f8d7da;
+    border-radius: 4px;
+}
+
+.symptom-category, .treatment-category {
+    margin-bottom: 15px;
+}
+
+.symptom-category h5, .treatment-category h5 {
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+.sources-section {
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.sources-section a {
+    color: #007bff;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.sources-section a:hover {
+    text-decoration: underline;
+}
+</style> 
