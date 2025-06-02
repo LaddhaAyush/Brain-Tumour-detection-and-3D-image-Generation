@@ -114,9 +114,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - YOLOv8 team for the detection model
 - Three.js community for 3D visualization tools
 - Medical imaging community for dataset and research
-
-## Contact
-
-[Your Name] - [Your Email]
-
-Project Link: [https://github.com/yourusername/your-repo-name] 
